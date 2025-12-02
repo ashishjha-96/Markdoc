@@ -4,7 +4,7 @@
  * Modal dialog to collect user's name before joining the document.
  */
 
-import { useState, FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 interface NamePromptProps {
   onSubmit: (name: string) => void;

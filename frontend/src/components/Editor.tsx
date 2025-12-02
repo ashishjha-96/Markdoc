@@ -5,7 +5,6 @@
  */
 
 import { useEffect, useState, useMemo } from "react";
-import { BlockNoteEditor } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import * as Y from "yjs";
@@ -15,7 +14,6 @@ import { UserPresence } from "./UserPresence";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { NamePrompt } from "./NamePrompt";
 import { Cursors } from "./Cursors";
-import { usePresence } from "../hooks/usePresence";
 import { useCursors } from "../hooks/useCursors";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -46,9 +44,6 @@ export function Editor({ docId }: EditorProps) {
   // Generate a random user color (persists across re-renders)
   const userColor = useMemo(() => generateColor(), []);
 
-  // Track presence of all users (for online status)
-  const users = usePresence(provider?.channel || null);
-
   // Track cursors separately (to avoid presence spam)
   const cursors = useCursors(provider?.channel || null);
 
@@ -77,15 +72,16 @@ export function Editor({ docId }: EditorProps) {
 
   // Create BlockNote editor with Y.js collaboration
   const editor = useCreateBlockNote({
-    collaboration: {
-      // Y.js document fragment for collaboration
-      fragment: doc.getXmlFragment("document"),
-      // User info for presence
-      user: {
-        name: userInfo?.name || "Anonymous",
-        color: userColor,
-      },
-    },
+    collaboration: provider
+      ? {
+          fragment: doc.getXmlFragment("document"),
+          user: {
+            name: userInfo?.name || "Anonymous",
+            color: userColor,
+          },
+          provider,
+        }
+      : undefined,
   });
 
   // Initialize Phoenix provider only after we have user info

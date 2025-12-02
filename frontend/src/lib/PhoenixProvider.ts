@@ -17,10 +17,9 @@ export class PhoenixProvider {
   public doc: Y.Doc;
   public socket: Socket;
   public channel: Channel;
-  private docId: string;
-  private userInfo: UserInfo;
   private synced: boolean = false;
-  private updateHandler: ((update: Uint8Array, origin: any) => void) | null = null;
+  private updateHandler: ((update: Uint8Array, origin: any) => void) | null =
+    null;
 
   constructor(
     docId: string,
@@ -29,10 +28,10 @@ export class PhoenixProvider {
     wsUrl: string = "ws://localhost:4000/socket"
   ) {
     this.doc = doc;
-    this.docId = docId;
-    this.userInfo = userInfo;
 
-    console.log(`📡 Connecting to Phoenix at ${wsUrl} for document "${docId}" as "${userInfo.name}"`);
+    console.log(
+      `📡 Connecting to Phoenix at ${wsUrl} for document "${docId}" as "${userInfo.name}"`
+    );
 
     // 1. Connect to Phoenix WebSocket with stable reconnection settings
     this.socket = new Socket(wsUrl, {
@@ -42,7 +41,7 @@ export class PhoenixProvider {
         // Exponential backoff: 1s, 2s, 5s, 10s, then 10s
         return [1000, 2000, 5000, 10000][tries - 1] || 10000;
       },
-      logger: (kind, msg, data) => {
+      logger: (kind: any, msg: any, data: any) => {
         if (kind === "error") {
           console.error("Phoenix Socket Error:", msg, data);
         }
@@ -58,7 +57,7 @@ export class PhoenixProvider {
       console.log("❌ WebSocket disconnected");
     });
 
-    this.socket.onError((error) => {
+    this.socket.onError((error: any) => {
       console.error("⚠️ WebSocket error:", error);
     });
 
@@ -78,8 +77,10 @@ export class PhoenixProvider {
     // 4. Join the channel and handle initial sync
     this.channel
       .join()
-      .receive("ok", (resp) => this.handleInitialSync(resp))
-      .receive("error", (resp) => {
+      .receive("ok", (resp: { history: number[][] }) =>
+        this.handleInitialSync(resp)
+      )
+      .receive("error", (resp: any) => {
         console.error("❌ Failed to join document channel:", resp);
       })
       .receive("timeout", () => {
@@ -116,11 +117,11 @@ export class PhoenixProvider {
     });
 
     // Listen for presence state and diff
-    this.channel.on("presence_state", (state) => {
+    this.channel.on("presence_state", (state: any) => {
       console.log("👥 Initial presence state:", state);
     });
 
-    this.channel.on("presence_diff", (diff) => {
+    this.channel.on("presence_diff", (diff: any) => {
       console.log("👥 Presence diff:", diff);
     });
 
@@ -150,7 +151,9 @@ export class PhoenixProvider {
       // Merge all updates into one
       const mergedUpdate = Y.mergeUpdates(updates);
 
-      console.log(`🔗 Merged into single update, size: ${mergedUpdate.length} bytes`);
+      console.log(
+        `🔗 Merged into single update, size: ${mergedUpdate.length} bytes`
+      );
 
       // Apply to local doc (use 'this' as origin to prevent echo)
       Y.applyUpdate(this.doc, mergedUpdate, this);
