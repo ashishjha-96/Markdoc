@@ -1,0 +1,247 @@
+/**
+ * Editor Component
+ *
+ * Main collaborative editor using BlockNote with Y.js sync through Phoenix.
+ */
+
+import { useEffect, useState, useMemo } from "react";
+import { BlockNoteEditor } from "@blocknote/core";
+import { BlockNoteView } from "@blocknote/mantine";
+import { useCreateBlockNote } from "@blocknote/react";
+import * as Y from "yjs";
+import { PhoenixProvider } from "../lib/PhoenixProvider";
+import type { UserInfo } from "../lib/PhoenixProvider";
+import { UserPresence } from "./UserPresence";
+import { ConnectionStatus } from "./ConnectionStatus";
+import { NamePrompt } from "./NamePrompt";
+import { Cursors } from "./Cursors";
+import { usePresence } from "../hooks/usePresence";
+import { useCursors } from "../hooks/useCursors";
+import "@blocknote/core/fonts/inter.css";
+import "@blocknote/mantine/style.css";
+
+interface EditorProps {
+  docId: string;
+}
+
+// Helper to generate a random color
+const generateColor = () =>
+  "#" +
+  Array.from({ length: 3 })
+    .map(() =>
+      Math.floor(Math.random() * 256)
+        .toString(16)
+        .padStart(2, "0")
+    )
+    .join("");
+
+export function Editor({ docId }: EditorProps) {
+  const [provider, setProvider] = useState<PhoenixProvider | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+
+  // Create Y.js document (persists across re-renders)
+  const doc = useMemo(() => new Y.Doc(), []);
+
+  // Generate a random user color (persists across re-renders)
+  const userColor = useMemo(() => generateColor(), []);
+
+  // Track presence of all users (for online status)
+  const users = usePresence(provider?.channel || null);
+
+  // Track cursors separately (to avoid presence spam)
+  const cursors = useCursors(provider?.channel || null);
+
+  // Check for existing username in localStorage on mount
+  useEffect(() => {
+    const storedName = localStorage.getItem("markdoc-username");
+    if (storedName) {
+      setUserInfo({
+        name: storedName,
+        color: userColor,
+      });
+    } else {
+      setShowNamePrompt(true);
+    }
+  }, [userColor]);
+
+  // Handle name submission
+  const handleNameSubmit = (name: string) => {
+    localStorage.setItem("markdoc-username", name);
+    setUserInfo({
+      name,
+      color: userColor,
+    });
+    setShowNamePrompt(false);
+  };
+
+  // Create BlockNote editor with Y.js collaboration
+  const editor = useCreateBlockNote({
+    collaboration: {
+      // Y.js document fragment for collaboration
+      fragment: doc.getXmlFragment("document"),
+      // User info for presence
+      user: {
+        name: userInfo?.name || "Anonymous",
+        color: userColor,
+      },
+    },
+  });
+
+  // Initialize Phoenix provider only after we have user info
+  useEffect(() => {
+    if (!userInfo) return;
+
+    console.log(`🚀 Initializing editor for document: ${docId}`);
+
+    const phoenixProvider = new PhoenixProvider(docId, doc, userInfo);
+    setProvider(phoenixProvider);
+
+    return () => {
+      console.log(`🛑 Cleaning up editor for document: ${docId}`);
+      phoenixProvider.destroy();
+    };
+  }, [docId, doc, userInfo]);
+
+  // Track text editor cursor position (not mouse position)
+  useEffect(() => {
+    if (!provider || !editor) return;
+
+    // Track selection changes in the editor
+    let lastPosition: { x: number; y: number } | null = null;
+
+    const updateCursorPosition = () => {
+      try {
+        // Get the current selection
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        // Only update if position actually changed
+        const newPosition = {
+          x: Math.round(rect.left),
+          y: Math.round(rect.top),
+        };
+
+        if (
+          !lastPosition ||
+          lastPosition.x !== newPosition.x ||
+          lastPosition.y !== newPosition.y
+        ) {
+          lastPosition = newPosition;
+
+          // Only send if cursor is visible (has valid position)
+          if (rect.left > 0 && rect.top > 0) {
+            provider.updateCursor(newPosition);
+          }
+        }
+      } catch (error) {
+        // Ignore errors from getting selection
+      }
+    };
+
+    // Listen to editor selection changes
+    const handleSelectionChange = () => {
+      updateCursorPosition();
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      // Clear cursor when unmounting
+      provider.updateCursor({ x: -1, y: -1 });
+    };
+  }, [provider, editor]);
+
+  return (
+    <>
+      {/* Show name prompt if needed */}
+      {showNamePrompt && (
+        <NamePrompt onSubmit={handleNameSubmit} docId={docId} />
+      )}
+
+      <div
+        style={{
+          width: "100%",
+          minHeight: "100vh",
+          backgroundColor: "#fafafa",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            backgroundColor: "white",
+            borderBottom: "1px solid #e0e0e0",
+            padding: "16px 24px",
+          }}
+        >
+          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "20px",
+                fontWeight: 600,
+                color: "#1a1a1a",
+              }}
+            >
+              Markdoc
+            </h1>
+            <p style={{ margin: "4px 0 0 0", color: "#666", fontSize: "13px" }}>
+              Document:{" "}
+              <code
+                style={{
+                  background: "#f5f5f5",
+                  padding: "2px 6px",
+                  borderRadius: "3px",
+                  fontSize: "12px",
+                }}
+              >
+                {docId}
+              </code>
+              {userInfo && (
+                <>
+                  {" · "}
+                  Logged in as:{" "}
+                  <span style={{ fontWeight: 500 }}>{userInfo.name}</span>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Editor Container */}
+        <div
+          style={{
+            maxWidth: "1200px",
+            margin: "0 auto",
+            padding: "24px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              border: "1px solid #e0e0e0",
+              borderRadius: "8px",
+              overflow: "hidden",
+              minHeight: "calc(100vh - 200px)",
+            }}
+          >
+            <BlockNoteView editor={editor} theme="light" />
+          </div>
+        </div>
+
+        {/* User Presence Indicator */}
+        <UserPresence channel={provider?.channel || null} />
+
+        {/* Connection Status Indicator */}
+        <ConnectionStatus socket={provider?.socket || null} />
+
+        {/* Collaborative Cursors */}
+        <Cursors cursors={cursors} />
+      </div>
+    </>
+  );
+}
