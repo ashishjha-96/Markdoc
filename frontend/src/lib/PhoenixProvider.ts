@@ -24,9 +24,12 @@ export class PhoenixProvider {
   constructor(
     docId: string,
     doc: Y.Doc,
-    userInfo: UserInfo,
-    wsUrl: string = "ws://localhost:4000/socket"
+    userInfo: UserInfo
   ) {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/socket`;
+
     this.doc = doc;
 
     console.log(
