@@ -38,6 +38,10 @@ if config_env() == :prod do
 
   config :markdoc, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  allowed_origins =
+    System.get_env("ALLOWED_ORIGINS", "http://localhost:4000,http://localhost:5173")
+    |> String.split(",", trim: true)
+
   config :markdoc, MarkdocWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
@@ -48,7 +52,8 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0},
       port: port
     ],
-    secret_key_base: secret_key_base
+    secret_key_base: secret_key_base,
+    check_origin: allowed_origins
 
   # ## SSL Support
   #
