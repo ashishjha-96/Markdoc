@@ -14,6 +14,7 @@ import { UserPresence } from "./UserPresence";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { NamePrompt } from "./NamePrompt";
 import { Cursors } from "./Cursors";
+import { ExportMenu } from "./ExportMenu";
 import { useCursors } from "../hooks/useCursors";
 import { generateDocId } from "../lib/generateDocId";
 import "@blocknote/core/fonts/inter.css";
@@ -225,7 +226,7 @@ export function Editor({ docId }: EditorProps) {
                   color: "#1a1a1a",
                 }}
               >
-                Markdoc
+                [ Markdoc ]
               </h1>
               <p
                 style={{ margin: "4px 0 0 0", color: "#666", fontSize: "13px" }}
@@ -261,30 +262,14 @@ export function Editor({ docId }: EditorProps) {
               {/* User Presence Avatars */}
               <UserPresence channel={provider?.channel || null} />
 
-              {/* New Document Button */}
-              <button
-                onClick={handleNewDocument}
-                style={{
-                  padding: "10px 20px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "white",
-                  backgroundColor: "#646cff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  transition: "background-color 0.2s",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#535bf2";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#646cff";
-                }}
-              >
-                + New Document
-              </button>
+              {/* Combined Menu (New Document + Export) */}
+              {editor && (
+                <ExportMenu
+                  editor={editor}
+                  docId={docId}
+                  onNewDocument={handleNewDocument}
+                />
+              )}
             </div>
           </div>
         </div>
