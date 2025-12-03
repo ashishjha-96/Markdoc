@@ -1,10 +1,10 @@
-import { createHighlighter, type HighlighterGeneric } from "shiki";
+import { createHighlighter } from "shiki";
 
 /**
  * Supported programming languages for syntax highlighting.
  * Core set optimized for common use cases and bundle size.
  */
-export const SUPPORTED_LANGUAGES = {
+export const SUPPORTED_LANGUAGES: Record<string, { name: string; aliases?: string[] }> = {
   // Web Development
   javascript: { name: "JavaScript", aliases: ["js"] },
   typescript: { name: "TypeScript", aliases: ["ts"] },
@@ -25,7 +25,7 @@ export const SUPPORTED_LANGUAGES = {
   sql: { name: "SQL" },
   markdown: { name: "Markdown", aliases: ["md"] },
   haskell: { name: "Haskell", aliases: ["hs"] },
-} as const;
+};
 
 export const DEFAULT_LANGUAGE = "text";
 export const THEME = "github-dark-dimmed";
@@ -34,11 +34,11 @@ export const THEME = "github-dark-dimmed";
  * Creates Shiki highlighter instance.
  * Called lazily by BlockNote on first code block creation.
  */
-export async function createShikiHighlighter(): Promise<HighlighterGeneric<any, any>> {
+export async function createShikiHighlighter() {
   const highlighter = await createHighlighter({
     themes: [THEME],
     langs: Object.keys(SUPPORTED_LANGUAGES),
   });
 
-  return highlighter;
+  return highlighter as any;
 }
