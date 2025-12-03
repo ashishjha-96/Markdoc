@@ -13,6 +13,7 @@
     "@blocknote/core": "^0.44.0",
     "@blocknote/mantine": "^0.44.0",
     "@blocknote/react": "^0.44.0",
+    "nanoid": "^5.1.6",
     "phoenix": "^1.8.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

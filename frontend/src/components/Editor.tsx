@@ -15,6 +15,7 @@ import { ConnectionStatus } from "./ConnectionStatus";
 import { NamePrompt } from "./NamePrompt";
 import { Cursors } from "./Cursors";
 import { useCursors } from "../hooks/useCursors";
+import { generateDocId } from "../lib/generateDocId";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 
@@ -47,6 +48,12 @@ export function Editor({ docId }: EditorProps) {
   // Track cursors separately (to avoid presence spam)
   const cursors = useCursors(provider?.channel || null);
 
+  // Handler for creating a new document
+  const handleNewDocument = () => {
+    const newDocId = generateDocId();
+    window.location.pathname = `/${newDocId}`;
+  };
+
   // Check for existing username in localStorage on mount
   useEffect(() => {
     const storedName = localStorage.getItem("markdoc-username");
@@ -71,18 +78,22 @@ export function Editor({ docId }: EditorProps) {
   };
 
   // Create BlockNote editor with Y.js collaboration
-  const editor = useCreateBlockNote({
-    collaboration: provider
-      ? {
-          fragment: doc.getXmlFragment("document"),
-          user: {
-            name: userInfo?.name || "Anonymous",
-            color: userColor,
-          },
-          provider,
-        }
-      : undefined,
-  });
+  // IMPORTANT: Only create editor after provider is ready to ensure collaboration works
+  const editor = useCreateBlockNote(
+    {
+      collaboration: provider
+        ? {
+            fragment: doc.getXmlFragment("document"),
+            user: {
+              name: userInfo?.name || "Anonymous",
+              color: userColor,
+            },
+            provider,
+          }
+        : undefined,
+    },
+    [provider] // Recreate editor when provider changes
+  );
 
   // Initialize Phoenix provider only after we have user info
   useEffect(() => {
@@ -111,6 +122,28 @@ export function Editor({ docId }: EditorProps) {
         // Get the current selection
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) return;
+
+        // Check if the selection is within the BlockNote editor
+        const anchorNode = selection.anchorNode;
+        if (!anchorNode) return;
+
+        // Find the BlockNote editor element
+        const editorElement = document.querySelector(".bn-container");
+        if (!editorElement) return;
+
+        // Check if the selection is inside the editor
+        const isInsideEditor =
+          editorElement.contains(anchorNode) ||
+          editorElement.contains(selection.focusNode);
+
+        if (!isInsideEditor) {
+          // If cursor moved outside editor, clear it
+          if (lastPosition) {
+            provider.updateCursor({ x: -1, y: -1 });
+            lastPosition = null;
+          }
+          return;
+        }
 
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
@@ -174,37 +207,85 @@ export function Editor({ docId }: EditorProps) {
             padding: "16px 24px",
           }}
         >
-          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "20px",
-                fontWeight: 600,
-                color: "#1a1a1a",
-              }}
-            >
-              Markdoc
-            </h1>
-            <p style={{ margin: "4px 0 0 0", color: "#666", fontSize: "13px" }}>
-              Document:{" "}
-              <code
+          <div
+            style={{
+              maxWidth: "1200px",
+              margin: "0 auto",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <h1
                 style={{
-                  background: "#f5f5f5",
-                  padding: "2px 6px",
-                  borderRadius: "3px",
-                  fontSize: "12px",
+                  margin: 0,
+                  fontSize: "20px",
+                  fontWeight: 600,
+                  color: "#1a1a1a",
                 }}
               >
-                {docId}
-              </code>
-              {userInfo && (
-                <>
-                  {" · "}
-                  Logged in as:{" "}
-                  <span style={{ fontWeight: 500 }}>{userInfo.name}</span>
-                </>
-              )}
-            </p>
+                Markdoc
+              </h1>
+              <p
+                style={{ margin: "4px 0 0 0", color: "#666", fontSize: "13px" }}
+              >
+                Document:{" "}
+                <code
+                  style={{
+                    background: "#f5f5f5",
+                    padding: "2px 6px",
+                    borderRadius: "3px",
+                    fontSize: "12px",
+                  }}
+                >
+                  {docId}
+                </code>
+                {userInfo && (
+                  <>
+                    {" · "}
+                    Logged in as:{" "}
+                    <span style={{ fontWeight: 500 }}>{userInfo.name}</span>
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              {/* User Presence Avatars */}
+              <UserPresence channel={provider?.channel || null} />
+
+              {/* New Document Button */}
+              <button
+                onClick={handleNewDocument}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "white",
+                  backgroundColor: "#646cff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#535bf2";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#646cff";
+                }}
+              >
+                + New Document
+              </button>
+            </div>
           </div>
         </div>
 
@@ -228,9 +309,6 @@ export function Editor({ docId }: EditorProps) {
             <BlockNoteView editor={editor} theme="light" />
           </div>
         </div>
-
-        {/* User Presence Indicator */}
-        <UserPresence channel={provider?.channel || null} />
 
         {/* Connection Status Indicator */}
         <ConnectionStatus socket={provider?.socket || null} />
