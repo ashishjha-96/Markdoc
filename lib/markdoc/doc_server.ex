@@ -84,7 +84,8 @@ defmodule Markdoc.DocServer do
 
   @impl true
   def init(doc_id) do
-    Logger.info("Document #{doc_id} spawned")
+    Logger.metadata(doc_id: doc_id)
+    Logger.info("Document spawned", event: :spawn, doc_id: doc_id)
 
     # Schedule periodic inactivity check
     Process.send_after(self(), :check_inactivity, @cleanup_timeout)
@@ -107,7 +108,11 @@ defmodule Markdoc.DocServer do
     new_users = MapSet.put(state.users, channel_pid)
     new_state = %{state | users: new_users, cleanup_timer: nil}
 
-    Logger.debug("User joined document #{state.doc_id}. Total users: #{MapSet.size(new_users)}")
+    Logger.debug("User joined document",
+      event: :user_joined,
+      channel_pid: inspect(channel_pid),
+      total_users: MapSet.size(new_users)
+    )
 
     {:noreply, new_state}
   end
@@ -117,13 +122,20 @@ defmodule Markdoc.DocServer do
     new_users = MapSet.delete(state.users, channel_pid)
     new_state = %{state | users: new_users}
 
-    Logger.debug("User left document #{state.doc_id}. Remaining users: #{MapSet.size(new_users)}")
+    Logger.debug("User left document",
+      event: :user_left,
+      channel_pid: inspect(channel_pid),
+      remaining_users: MapSet.size(new_users)
+    )
 
     # Start cleanup timer if no users remain
     new_state =
       if MapSet.size(new_users) == 0 do
         timer_ref = Process.send_after(self(), :cleanup_timeout, @cleanup_timeout)
-        Logger.info("Document #{state.doc_id} is now idle. Cleanup in #{@cleanup_timeout}ms")
+        Logger.info("Document is now idle",
+          event: :document_idle,
+          cleanup_timeout_ms: @cleanup_timeout
+        )
         %{new_state | cleanup_timer: timer_ref}
       else
         new_state
@@ -137,13 +149,19 @@ defmodule Markdoc.DocServer do
     new_history = [binary | state.history]
     new_count = state.update_count + 1
 
-    Logger.debug("Document #{state.doc_id} received update. History size: #{length(new_history)}")
+    Logger.debug("Document received update",
+      event: :update_received,
+      history_size: length(new_history),
+      update_count: new_count
+    )
 
     # Check if we need to trigger a snapshot
     new_state =
       if new_count >= @snapshot_threshold do
-        Logger.info(
-          "Document #{state.doc_id} reached snapshot threshold (#{@snapshot_threshold} updates)"
+        Logger.info("Document reached snapshot threshold",
+          event: :snapshot_threshold_reached,
+          threshold: @snapshot_threshold,
+          update_count: new_count
         )
 
         trigger_snapshot_request(state.users, state.doc_id)
@@ -158,7 +176,11 @@ defmodule Markdoc.DocServer do
   @impl true
   def handle_cast({:save_snapshot, snapshot_binary}, state) do
     old_count = length(state.history)
-    Logger.info("📦 Document #{state.doc_id}: Replacing #{old_count} updates with 1 snapshot")
+    Logger.info("Snapshot saved",
+      event: :snapshot_saved,
+      old_update_count: old_count,
+      new_update_count: 1
+    )
 
     # Replace entire history with single snapshot blob
     {:noreply, %{state | history: [snapshot_binary], update_count: 0}}
@@ -173,7 +195,10 @@ defmodule Markdoc.DocServer do
   def handle_info(:check_inactivity, state) do
     # Periodic check for inactivity
     if MapSet.size(state.users) == 0 do
-      Logger.info("Document #{state.doc_id} idle timeout. Terminating...")
+      Logger.info("Document idle timeout, terminating",
+        event: :idle_timeout,
+        reason: :no_users
+      )
       {:stop, :normal, state}
     else
       # Reschedule check
@@ -184,7 +209,10 @@ defmodule Markdoc.DocServer do
 
   @impl true
   def handle_info(:cleanup_timeout, state) do
-    Logger.info("Document #{state.doc_id} cleanup timeout expired. Terminating...")
+    Logger.info("Document cleanup timeout expired, terminating",
+      event: :cleanup_timeout,
+      reason: :timeout_expired
+    )
     {:stop, :normal, state}
   end
 
@@ -193,15 +221,20 @@ defmodule Markdoc.DocServer do
     # A monitored channel process died
     new_users = MapSet.delete(state.users, pid)
 
-    Logger.debug(
-      "Document #{state.doc_id}: Monitored process died. Remaining users: #{MapSet.size(new_users)}"
+    Logger.debug("Monitored process died",
+      event: :process_died,
+      channel_pid: inspect(pid),
+      remaining_users: MapSet.size(new_users)
     )
 
     # Start cleanup timer if no users remain
     new_state =
       if MapSet.size(new_users) == 0 do
         timer_ref = Process.send_after(self(), :cleanup_timeout, @cleanup_timeout)
-        Logger.info("Document #{state.doc_id} is now idle. Cleanup in #{@cleanup_timeout}ms")
+        Logger.info("Document is now idle",
+          event: :document_idle,
+          cleanup_timeout_ms: @cleanup_timeout
+        )
         %{state | users: new_users, cleanup_timer: timer_ref}
       else
         %{state | users: new_users}
@@ -211,8 +244,11 @@ defmodule Markdoc.DocServer do
   end
 
   @impl true
-  def terminate(reason, state) do
-    Logger.info("Document #{state.doc_id} terminated. Reason: #{inspect(reason)}")
+  def terminate(reason, _state) do
+    Logger.info("Document terminated",
+      event: :terminate,
+      reason: inspect(reason)
+    )
     :ok
   end
 
@@ -221,11 +257,19 @@ defmodule Markdoc.DocServer do
   defp trigger_snapshot_request(users, doc_id) do
     case users |> MapSet.to_list() |> Enum.take_random(1) do
       [pid] ->
-        Logger.debug("Requesting snapshot from channel #{inspect(pid)} for document #{doc_id}")
+        Logger.debug("Requesting snapshot from channel",
+          event: :snapshot_request,
+          channel_pid: inspect(pid),
+          doc_id: doc_id
+        )
         send(pid, :request_snapshot)
 
       [] ->
-        Logger.warning("Cannot request snapshot: no users connected to document #{doc_id}")
+        Logger.warning("Cannot request snapshot, no users connected",
+          event: :snapshot_request_failed,
+          reason: :no_users,
+          doc_id: doc_id
+        )
         :ok
     end
   end

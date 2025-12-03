@@ -17,6 +17,7 @@
     "phoenix": "^1.8.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "shiki": "^3.19.0",
     "yjs": "^13.6.27"
   },
   "devDependencies": {

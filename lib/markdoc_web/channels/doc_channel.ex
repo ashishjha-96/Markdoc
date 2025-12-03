@@ -27,12 +27,16 @@ defmodule MarkdocWeb.DocChannel do
 
   @impl true
   def join("doc:" <> doc_id, params, socket) do
-    Logger.info("Client joining document: #{doc_id}")
+    Logger.metadata(doc_id: doc_id)
+    Logger.info("Client joining document", event: :client_join, doc_id: doc_id)
 
     # Ensure document process exists
     case DocRegistry.lookup(doc_id) do
       [] ->
-        Logger.info("Document #{doc_id} not found, starting new process")
+        Logger.info("Document not found, starting new process",
+          event: :document_start,
+          reason: :not_found
+        )
 
         case DocSupervisor.start_doc(doc_id) do
           {:ok, _pid} -> :ok
@@ -40,7 +44,7 @@ defmodule MarkdocWeb.DocChannel do
         end
 
       [{_pid, _}] ->
-        Logger.debug("Document #{doc_id} already exists")
+        Logger.debug("Document already exists", event: :document_exists)
         :ok
     end
 
@@ -50,7 +54,10 @@ defmodule MarkdocWeb.DocChannel do
     # Fetch history
     history = DocServer.get_history(doc_id)
 
-    Logger.debug("Document #{doc_id} has #{length(history)} updates in history")
+    Logger.debug("Document history fetched",
+      event: :history_fetched,
+      history_size: length(history)
+    )
 
     # Convert binary history to arrays for JSON transport
     history_arrays = Enum.map(history, &:erlang.binary_to_list/1)
@@ -70,7 +77,11 @@ defmodule MarkdocWeb.DocChannel do
     socket = assign(socket, :user_name, user_name)
     socket = assign(socket, :user_color, user_color)
 
-    Logger.info("User '#{user_name}' joining document #{doc_id}")
+    Logger.info("User joining document",
+      event: :user_join,
+      user_name: user_name,
+      user_color: user_color
+    )
 
     # Track presence after join (send message to self)
     send(self(), :after_join)
@@ -101,7 +112,10 @@ defmodule MarkdocWeb.DocChannel do
     # Convert JSON array to binary
     binary = :erlang.list_to_binary(binary_array)
 
-    Logger.info("Received snapshot for document #{doc_id}, size: #{byte_size(binary)} bytes")
+    Logger.info("Received snapshot from client",
+      event: :snapshot_received,
+      size_bytes: byte_size(binary)
+    )
 
     # Save snapshot to GenServer
     DocServer.save_snapshot(doc_id, binary)
@@ -149,7 +163,9 @@ defmodule MarkdocWeb.DocChannel do
 
   @impl true
   def handle_info(:request_snapshot, socket) do
-    Logger.debug("Requesting snapshot from client for document #{socket.assigns.doc_id}")
+    Logger.debug("Requesting snapshot from client",
+      event: :snapshot_request_to_client
+    )
 
     # Forward snapshot request to client
     push(socket, "request_snapshot", %{})
@@ -162,7 +178,11 @@ defmodule MarkdocWeb.DocChannel do
     doc_id = socket.assigns[:doc_id]
 
     if doc_id do
-      Logger.info("Client leaving document: #{doc_id}, reason: #{inspect(reason)}")
+      Logger.info("Client leaving document",
+        event: :client_leave,
+        doc_id: doc_id,
+        reason: inspect(reason)
+      )
       DocServer.leave(doc_id, self())
     end
 

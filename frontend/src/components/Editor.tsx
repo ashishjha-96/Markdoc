@@ -8,6 +8,7 @@ import { useEffect, useState, useMemo } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import * as Y from "yjs";
+import { schema } from "../lib/editorSchema";
 import { PhoenixProvider } from "../lib/PhoenixProvider";
 import type { UserInfo } from "../lib/PhoenixProvider";
 import { UserPresence } from "./UserPresence";
@@ -82,6 +83,7 @@ export function Editor({ docId }: EditorProps) {
   // IMPORTANT: Only create editor after provider is ready to ensure collaboration works
   const editor = useCreateBlockNote(
     {
+      schema, // Custom schema with syntax highlighting
       collaboration: provider
         ? {
             fragment: doc.getXmlFragment("document"),
@@ -226,7 +228,7 @@ export function Editor({ docId }: EditorProps) {
                   color: "#1a1a1a",
                 }}
               >
-                [ Markdoc ]
+                [ MarkDoc ]
               </h1>
               <p
                 style={{ margin: "4px 0 0 0", color: "#666", fontSize: "13px" }}

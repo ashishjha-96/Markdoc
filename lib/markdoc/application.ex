@@ -17,6 +17,8 @@ defmodule Markdoc.Application do
       Markdoc.DocSupervisor,
       # Presence tracking for collaborative features
       MarkdocWeb.Presence,
+      # System monitoring and stats logging
+      Markdoc.Monitor,
       # Start to serve requests, typically the last entry
       MarkdocWeb.Endpoint
     ]
