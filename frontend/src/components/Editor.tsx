@@ -371,53 +371,6 @@ export function Editor({ docId }: EditorProps) {
               {/* User Presence Avatars */}
               <UserPresence channel={provider?.channel || null} />
 
-              {/* Add Chat Button */}
-              {editor && (
-                <button
-                  onClick={() => {
-                    const currentBlock = editor.getTextCursorPosition().block;
-                    editor.insertBlocks(
-                      [{
-                        type: "chat" as any,
-                        props: {
-                          chatId: nanoid(),
-                          title: "Chat Discussion",
-                          minimized: false,
-                          height: 400,
-                          width: 600,
-                        }
-                      }],
-                      currentBlock.id,
-                      "after"
-                    );
-                  }}
-                  style={{
-                    padding: "8px 12px",
-                    backgroundColor: "#646cff",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#535bf2";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#646cff";
-                  }}
-                  title="Insert Chat Block"
-                >
-                  <span style={{ fontSize: "16px" }}>💬</span>
-                  <span>Add Chat</span>
-                </button>
-              )}
-
               {/* Combined Menu (New Document + Export) */}
               {editor && (
                 <ExportMenu
