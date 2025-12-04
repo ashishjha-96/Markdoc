@@ -59,7 +59,7 @@ export function ExportMenu({ editor, docId, onNewDocument }: ExportMenuProps) {
         <button
           onClick={handleNewDocument}
           style={{
-            padding: "10px 20px",
+            padding: "6px 8px",
             fontSize: "14px",
             fontWeight: 600,
             color: "white",
@@ -84,10 +84,10 @@ export function ExportMenu({ editor, docId, onNewDocument }: ExportMenuProps) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "24px",
-              height: "24px",
+              width: "20px",
+              height: "20px",
               backgroundColor: "rgba(255,255,255,0.3)",
-              borderRadius: "6px",
+              borderRadius: "4px",
               fontSize: "18px",
             }}
           >
@@ -108,7 +108,7 @@ export function ExportMenu({ editor, docId, onNewDocument }: ExportMenuProps) {
         <button
           onClick={() => setIsOpen(!isOpen)}
           style={{
-            padding: "10px 16px",
+            padding: "6px 12px",
             backgroundColor: "transparent",
             border: "none",
             cursor: "pointer",
@@ -124,7 +124,7 @@ export function ExportMenu({ editor, docId, onNewDocument }: ExportMenuProps) {
             e.currentTarget.style.backgroundColor = "transparent";
           }}
         >
-          <span style={{ fontSize: "16px", color: "white" }}>▼</span>
+          <span style={{ fontSize: "12px", color: "white" }}>▼</span>
         </button>
       </div>
 

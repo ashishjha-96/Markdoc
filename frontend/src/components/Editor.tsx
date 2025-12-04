@@ -219,13 +219,17 @@ export function Editor({ docId }: EditorProps) {
             <div>
               <h1
                 style={{
+                  display: "flex",
+                  alignItems: "center",
                   margin: 0,
                   fontSize: "20px",
                   fontWeight: 600,
                   color: "#1a1a1a",
                 }}
               >
-                [ MarkDoc ]
+                <span style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>[</span>
+                <span>MarkDoc </span>
+                <span style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>]</span>
               </h1>
               <p
                 style={{ margin: "4px 0 0 0", color: "#666", fontSize: "13px" }}
