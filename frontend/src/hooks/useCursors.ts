@@ -12,7 +12,7 @@ export interface CursorInfo {
   user_id: string;
   user_name: string;
   user_color: string;
-  position: { x: number; y: number };
+  position: { blockId: string; offset: number };
 }
 
 export function useCursors(channel: Channel | null) {
@@ -23,8 +23,8 @@ export function useCursors(channel: Channel | null) {
 
     const handleCursorUpdate = (data: CursorInfo) => {
       setCursors((prev) => {
-        // Remove cursor if position is invalid
-        if (data.position.x < 0 || data.position.y < 0) {
+        // Remove cursor if position is invalid (empty blockId means cursor is inactive)
+        if (!data.position.blockId) {
           const { [data.user_id]: _, ...rest } = prev;
           return rest;
         }

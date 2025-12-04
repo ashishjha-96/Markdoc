@@ -178,7 +178,7 @@ export class PhoenixProvider {
   /**
    * Update cursor position
    */
-  public updateCursor(position: { x: number; y: number }) {
+  public updateCursor(position: { blockId: string; offset: number }) {
     this.channel.push("cursor_move", { position });
   }
 

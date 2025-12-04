@@ -118,59 +118,56 @@ export function Editor({ docId }: EditorProps) {
     if (!provider || !editor) return;
 
     // Track selection changes in the editor
-    let lastPosition: { x: number; y: number } | null = null;
+    let lastPosition: { blockId: string; offset: number } | null = null;
 
     const updateCursorPosition = () => {
       try {
-        // Get the current selection
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return;
+        // Get BlockNote's text cursor position
+        const textCursorPos = editor.getTextCursorPosition();
 
-        // Check if the selection is within the BlockNote editor
-        const anchorNode = selection.anchorNode;
-        if (!anchorNode) return;
-
-        // Find the BlockNote editor element
-        const editorElement = document.querySelector(".bn-container");
-        if (!editorElement) return;
-
-        // Check if the selection is inside the editor
-        const isInsideEditor =
-          editorElement.contains(anchorNode) ||
-          editorElement.contains(selection.focusNode);
-
-        if (!isInsideEditor) {
-          // If cursor moved outside editor, clear it
+        // Get the current block
+        const currentBlock = textCursorPos.block;
+        if (!currentBlock) {
+          // No block selected, clear cursor
           if (lastPosition) {
-            provider.updateCursor({ x: -1, y: -1 });
+            provider.updateCursor({ blockId: "", offset: 0 });
             lastPosition = null;
           }
           return;
         }
 
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
+        // Simple approach: Use DOM selection to get offset within block
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
 
-        // Only update if position actually changed
+        // Find the block element in the DOM
+        const blockElement = document.querySelector(`[data-id="${currentBlock.id}"]`);
+        if (!blockElement) return;
+
+        // Get the range and calculate offset from block start
+        const range = selection.getRangeAt(0);
+        const blockRange = document.createRange();
+        blockRange.selectNodeContents(blockElement);
+        blockRange.setEnd(range.startContainer, range.startOffset);
+
+        const offset = blockRange.toString().length;
+
         const newPosition = {
-          x: Math.round(rect.left),
-          y: Math.round(rect.top),
+          blockId: currentBlock.id,
+          offset: offset,
         };
 
+        // Only update if position actually changed
         if (
           !lastPosition ||
-          lastPosition.x !== newPosition.x ||
-          lastPosition.y !== newPosition.y
+          lastPosition.blockId !== newPosition.blockId ||
+          lastPosition.offset !== newPosition.offset
         ) {
           lastPosition = newPosition;
-
-          // Only send if cursor is visible (has valid position)
-          if (rect.left > 0 && rect.top > 0) {
-            provider.updateCursor(newPosition);
-          }
+          provider.updateCursor(newPosition);
         }
       } catch (error) {
-        // Ignore errors from getting selection
+        console.error("Error tracking cursor:", error);
       }
     };
 
@@ -184,7 +181,7 @@ export function Editor({ docId }: EditorProps) {
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
       // Clear cursor when unmounting
-      provider.updateCursor({ x: -1, y: -1 });
+      provider.updateCursor({ blockId: "", offset: 0 });
     };
   }, [provider, editor]);
 
