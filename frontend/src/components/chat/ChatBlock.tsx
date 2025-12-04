@@ -15,6 +15,7 @@ import { useChatReadReceipts } from "../../hooks/useChatReadReceipts";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { useBlockNoteEditor } from "@blocknote/react";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   loadFloatingState,
   saveFloatingState,
@@ -76,10 +77,10 @@ export function ChatBlock({ block }: ChatBlockProps) {
       <div
         style={{
           padding: "16px",
-          border: "1px solid #e0e0e0",
+          border: "1px solid var(--chat-border)",
           borderRadius: "8px",
-          backgroundColor: "#fff9e6",
-          color: "#666",
+          backgroundColor: "var(--chat-header-bg)",
+          color: "var(--chat-text-secondary)",
         }}
       >
         Chat block error: Editor context not available
@@ -354,10 +355,10 @@ export function ChatBlock({ block }: ChatBlockProps) {
       <div
         style={{
           padding: "16px",
-          border: "1px solid #e0e0e0",
+          border: "1px solid var(--chat-border)",
           borderRadius: "8px",
-          backgroundColor: "#fff9e6",
-          color: "#666",
+          backgroundColor: "var(--chat-header-bg)",
+          color: "var(--chat-text-secondary)",
         }}
       >
         Initializing chat...
@@ -372,22 +373,24 @@ export function ChatBlock({ block }: ChatBlockProps) {
         left: `${floatingPosition.x}px`,
         top: `${floatingPosition.y}px`,
         zIndex: floatingZIndex,
-        border: "1px solid #e0e0e0",
+        border: "1px solid var(--chat-border)",
         borderRadius: "8px",
-        backgroundColor: "white",
+        backgroundColor: "var(--chat-bg)",
         overflow: "hidden",
         width: `${width}px`,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+        transition: "background-color 0.2s ease, border-color 0.2s ease",
       }
     : {
-        border: "1px solid #e0e0e0",
+        border: "1px solid var(--chat-border)",
         borderRadius: "8px",
-        backgroundColor: "white",
+        backgroundColor: "var(--chat-bg)",
         marginTop: "8px",
         marginBottom: "8px",
         overflow: "hidden",
         width: `${width}px`,
         position: "relative",
+        transition: "background-color 0.2s ease, border-color 0.2s ease",
       };
 
   return (
@@ -404,9 +407,10 @@ export function ChatBlock({ block }: ChatBlockProps) {
             justifyContent: "space-between",
             alignItems: "center",
             padding: "12px 16px",
-            borderBottom: "1px solid #e0e0e0",
-            backgroundColor: "#fafafa",
+            borderBottom: "1px solid var(--chat-border)",
+            backgroundColor: "var(--chat-header-bg)",
             cursor: isFloating && !isEditingTitle ? "move" : "default",
+            transition: "background-color 0.2s ease, border-color 0.2s ease",
           }}
           onMouseDown={isFloating && !isEditingTitle ? handleDragStart : undefined}
         >
@@ -429,7 +433,8 @@ export function ChatBlock({ block }: ChatBlockProps) {
               style={{
                 fontWeight: 600,
                 fontSize: "14px",
-                color: "#1a1a1a",
+                color: "var(--chat-text)",
+                backgroundColor: "var(--chat-btn-bg)",
                 border: "1px solid #646cff",
                 borderRadius: "4px",
                 padding: "2px 6px",
@@ -443,14 +448,14 @@ export function ChatBlock({ block }: ChatBlockProps) {
               style={{
                 fontWeight: 600,
                 fontSize: "14px",
-                color: "#1a1a1a",
+                color: "var(--chat-text)",
                 cursor: "pointer",
                 padding: "2px 6px",
                 borderRadius: "4px",
                 transition: "background-color 0.2s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#f5f5f5";
+                e.currentTarget.style.backgroundColor = "var(--chat-btn-hover)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent";
@@ -463,7 +468,7 @@ export function ChatBlock({ block }: ChatBlockProps) {
           <span
             style={{
               fontSize: "12px",
-              color: "#999",
+              color: "var(--chat-text-tertiary)",
             }}
           >
             • {messages.length} {messages.length === 1 ? "message" : "messages"}
@@ -515,21 +520,22 @@ export function ChatBlock({ block }: ChatBlockProps) {
             style={{
               width: "24px",
               height: "24px",
-              border: "1px solid #e0e0e0",
+              border: "1px solid var(--chat-border)",
               borderRadius: "4px",
-              backgroundColor: "white",
+              backgroundColor: "var(--chat-btn-bg)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "14px",
-              color: "#666",
+              color: "var(--chat-text-secondary)",
+              transition: "background-color 0.2s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f5f5f5";
+              e.currentTarget.style.backgroundColor = "var(--chat-btn-hover)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "white";
+              e.currentTarget.style.backgroundColor = "var(--chat-btn-bg)";
             }}
             title={isMinimized ? "Expand" : "Minimize"}
           >
@@ -545,22 +551,23 @@ export function ChatBlock({ block }: ChatBlockProps) {
             style={{
               width: "24px",
               height: "24px",
-              border: "1px solid #e0e0e0",
+              border: "1px solid var(--chat-border)",
               borderRadius: "4px",
-              backgroundColor: "white",
+              backgroundColor: "var(--chat-btn-bg)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "14px",
               color: "#646cff",
-              fontWeight: 800
+              fontWeight: 800,
+              transition: "background-color 0.2s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f5f5f5";
+              e.currentTarget.style.backgroundColor = "var(--chat-btn-hover)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "white";
+              e.currentTarget.style.backgroundColor = "var(--chat-btn-bg)";
             }}
             title={isFloating ? "Dock to document" : "Open in floating window"}
           >
@@ -645,7 +652,7 @@ export function ChatBlock({ block }: ChatBlockProps) {
           <div
             style={{
               padding: "12px 16px",
-              color: "#999",
+              color: "var(--chat-text-tertiary)",
               fontSize: "13px",
               fontStyle: "italic",
               display: "flex",
@@ -678,16 +685,17 @@ export function ChatBlock({ block }: ChatBlockProps) {
       {isFloating && (
         <div
           style={{
-            border: "1px dashed #e0e0e0",
+            border: "1px dashed var(--chat-border)",
             borderRadius: "8px",
-            backgroundColor: "#fafafa",
+            backgroundColor: "var(--chat-header-bg)",
             marginTop: "8px",
             marginBottom: "8px",
             padding: "16px",
-            color: "#999",
+            color: "var(--chat-text-tertiary)",
             fontSize: "13px",
             fontStyle: "italic",
             textAlign: "center",
+            transition: "background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease",
           }}
           contentEditable={false}
         >

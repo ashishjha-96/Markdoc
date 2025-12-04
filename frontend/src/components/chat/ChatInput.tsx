@@ -48,9 +48,10 @@ export function ChatInput({
   return (
     <div
       style={{
-        borderTop: "1px solid #e0e0e0",
+        borderTop: "1px solid var(--chat-border)",
         padding: "12px 16px",
-        backgroundColor: "white",
+        backgroundColor: "var(--chat-bg)",
+        transition: "background-color 0.2s ease, border-color 0.2s ease",
       }}
     >
       <div style={{ position: "relative" }}>
@@ -64,11 +65,13 @@ export function ChatInput({
           style={{
             width: "100%",
             padding: "8px 40px 8px 12px",
-            border: "1px solid #e0e0e0",
+            border: "1px solid var(--chat-border)",
             borderRadius: "6px",
             fontSize: "14px",
             outline: "none",
-            transition: "border-color 0.2s",
+            backgroundColor: "var(--chat-btn-bg)",
+            color: "var(--chat-text)",
+            transition: "border-color 0.2s, background-color 0.2s ease, color 0.2s ease",
           }}
           onFocus={(e) => {
             e.currentTarget.style.borderColor = "#646cff";

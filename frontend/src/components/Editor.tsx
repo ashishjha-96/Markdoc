@@ -15,6 +15,7 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import * as Y from "yjs";
 import { nanoid } from "nanoid";
 import { schema } from "../lib/editorSchema";
+import { setThemeMode } from "../lib/syntaxHighlighting";
 import { PhoenixProvider } from "../lib/PhoenixProvider";
 import type { UserInfo } from "../lib/PhoenixProvider";
 import { UserPresence } from "./UserPresence";
@@ -22,6 +23,8 @@ import { ConnectionStatus } from "./ConnectionStatus";
 import { NamePrompt } from "./NamePrompt";
 import { Cursors } from "./Cursors";
 import { ExportMenu } from "./ExportMenu";
+import { ThemeToggle } from "./ThemeToggle";
+import { useTheme } from "../contexts/ThemeContext";
 import { useCursors } from "../hooks/useCursors";
 import { usePresence } from "../hooks/usePresence";
 import { generateDocId } from "../lib/generateDocId";
@@ -95,6 +98,12 @@ export function Editor({ docId }: EditorProps) {
   const [provider, setProvider] = useState<PhoenixProvider | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const { mode } = useTheme();
+
+  // Update syntax highlighting theme when mode changes
+  useEffect(() => {
+    setThemeMode(mode);
+  }, [mode]);
 
   // Create Y.js document (persists across re-renders)
   const doc = useMemo(() => new Y.Doc(), []);
@@ -302,15 +311,15 @@ export function Editor({ docId }: EditorProps) {
         style={{
           width: "100%",
           minHeight: "100vh",
-          backgroundColor: "#fafafa",
         }}
       >
         {/* Header */}
         <div
           style={{
-            backgroundColor: "white",
-            borderBottom: "1px solid #e0e0e0",
+            backgroundColor: "var(--header-bg)",
+            borderBottom: "1px solid var(--header-border)",
             padding: "16px 24px",
+            transition: "background-color 0.2s ease, border-color 0.2s ease",
           }}
         >
           <div
@@ -330,7 +339,7 @@ export function Editor({ docId }: EditorProps) {
                   margin: 0,
                   fontSize: "20px",
                   fontWeight: 600,
-                  color: "#1a1a1a",
+                  color: "var(--page-text)",
                 }}
               >
                 <span style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>[</span>
@@ -338,15 +347,20 @@ export function Editor({ docId }: EditorProps) {
                 <span style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>]</span>
               </h1>
               <p
-                style={{ margin: "4px 0 0 0", color: "#666", fontSize: "13px" }}
+                style={{
+                  margin: "4px 0 0 0",
+                  color: mode === "dark" ? "#8b949e" : "#666",
+                  fontSize: "13px"
+                }}
               >
                 Document:{" "}
                 <code
                   style={{
-                    background: "#f5f5f5",
+                    background: mode === "dark" ? "#21262d" : "#f5f5f5",
                     padding: "2px 6px",
                     borderRadius: "3px",
                     fontSize: "12px",
+                    color: mode === "dark" ? "#e6edf3" : "#24292f",
                   }}
                 >
                   {docId}
@@ -371,6 +385,9 @@ export function Editor({ docId }: EditorProps) {
               {/* User Presence Avatars */}
               <UserPresence channel={provider?.channel || null} />
 
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {/* Combined Menu (New Document + Export) */}
               {editor && (
                 <ExportMenu
@@ -393,16 +410,17 @@ export function Editor({ docId }: EditorProps) {
         >
           <div
             style={{
-              backgroundColor: "white",
-              border: "1px solid #e0e0e0",
+              backgroundColor: "var(--editor-bg)",
+              border: "1px solid var(--editor-border)",
               borderRadius: "8px",
               overflow: "hidden",
               minHeight: "calc(100vh - 200px)",
+              transition: "background-color 0.2s ease, border-color 0.2s ease",
             }}
           >
             {editorContextValue ? (
               <EditorContext.Provider value={editorContextValue}>
-                <BlockNoteView editor={editor} theme="light" slashMenu={false}>
+                <BlockNoteView editor={editor} theme={mode} slashMenu={false}>
                   <SuggestionMenuController
                     triggerCharacter={"/"}
                     getItems={async (query) =>
@@ -415,7 +433,7 @@ export function Editor({ docId }: EditorProps) {
                 </BlockNoteView>
               </EditorContext.Provider>
             ) : (
-              <BlockNoteView editor={editor} theme="light" slashMenu={false}>
+              <BlockNoteView editor={editor} theme={mode} slashMenu={false}>
                 <SuggestionMenuController
                   triggerCharacter={"/"}
                   getItems={async (query) =>

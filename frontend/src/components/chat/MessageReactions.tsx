@@ -48,9 +48,9 @@ export function MessageReactions({
               alignItems: "center",
               gap: "4px",
               padding: "2px 8px",
-              border: `1px solid ${hasReacted ? "#646cff" : "#e0e0e0"}`,
+              border: `1px solid ${hasReacted ? "#646cff" : "var(--chat-border)"}`,
               borderRadius: "12px",
-              backgroundColor: hasReacted ? "#f0f0ff" : "white",
+              backgroundColor: hasReacted ? "#f0f0ff" : "var(--chat-btn-bg)",
               fontSize: "13px",
               cursor: "pointer",
               transition: "all 0.2s",
@@ -58,19 +58,19 @@ export function MessageReactions({
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = hasReacted
                 ? "#e6e6ff"
-                : "#f5f5f5";
+                : "var(--chat-btn-hover)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = hasReacted
                 ? "#f0f0ff"
-                : "white";
+                : "var(--chat-btn-bg)";
             }}
           >
             <span>{emoji}</span>
             <span
               style={{
                 fontSize: "11px",
-                color: hasReacted ? "#646cff" : "#666",
+                color: hasReacted ? "#646cff" : "var(--chat-text-secondary)",
                 fontWeight: hasReacted ? 600 : 400,
               }}
             >
@@ -87,9 +87,10 @@ export function MessageReactions({
           style={{
             width: "24px",
             height: "24px",
-            border: "1px solid #e0e0e0",
+            border: "1px solid var(--chat-border)",
             borderRadius: "12px",
-            backgroundColor: "white",
+            backgroundColor: "var(--chat-btn-bg)",
+            color: "var(--chat-text-secondary)",
             fontSize: "13px",
             cursor: "pointer",
             display: "flex",
@@ -98,12 +99,12 @@ export function MessageReactions({
             transition: "all 0.2s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#f5f5f5";
+            e.currentTarget.style.backgroundColor = "var(--chat-btn-hover)";
             e.currentTarget.style.borderColor = "#646cff";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "white";
-            e.currentTarget.style.borderColor = "#e0e0e0";
+            e.currentTarget.style.backgroundColor = "var(--chat-btn-bg)";
+            e.currentTarget.style.borderColor = "var(--chat-border)";
           }}
         >
           {showEmojiPicker ? "×" : "+"}
@@ -128,8 +129,8 @@ export function MessageReactions({
                 position: "absolute",
                 top: "calc(100% + 4px)",
                 left: 0,
-                backgroundColor: "white",
-                border: "1px solid #e0e0e0",
+                backgroundColor: "var(--chat-bg)",
+                border: "1px solid var(--chat-border)",
                 borderRadius: "8px",
                 padding: "8px",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
@@ -157,7 +158,7 @@ export function MessageReactions({
                     transition: "background-color 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f5f5f5";
+                    e.currentTarget.style.backgroundColor = "var(--chat-btn-hover)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = "transparent";

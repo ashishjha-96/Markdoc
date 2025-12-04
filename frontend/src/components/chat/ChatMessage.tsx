@@ -109,18 +109,18 @@ export function ChatMessage({
             style={{
               fontWeight: 600,
               fontSize: "14px",
-              color: "#1a1a1a",
+              color: "var(--chat-text)",
             }}
           >
             {message.userName}
             {isOwnMessage && (
-              <span style={{ fontWeight: 400, color: "#999" }}> (You)</span>
+              <span style={{ fontWeight: 400, color: "var(--chat-text-tertiary)" }}> (You)</span>
             )}
           </span>
           <span
             style={{
               fontSize: "12px",
-              color: "#999",
+              color: "var(--chat-text-tertiary)",
             }}
           >
             {formatTimestamp(message.timestamp)}
@@ -131,7 +131,7 @@ export function ChatMessage({
         <div
           style={{
             fontSize: "14px",
-            color: "#1a1a1a",
+            color: "var(--chat-text)",
             lineHeight: "1.5",
             wordBreak: "break-word",
             whiteSpace: "pre-wrap",

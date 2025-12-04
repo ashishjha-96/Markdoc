@@ -2,6 +2,65 @@
   box-sizing: border-box;
 }
 
+/* Theme variables */
+:root[data-theme="light"] {
+  --code-block-bg: #f6f8fa;
+  --code-select-color: #24292f;
+  --page-bg: #fafafa;
+  --page-text: #333;
+  --header-bg: #ffffff;
+  --header-border: #e0e0e0;
+  --editor-bg: #ffffff;
+  --editor-border: #e0e0e0;
+  --chat-bg: #ffffff;
+  --chat-border: #e0e0e0;
+  --chat-header-bg: #fafafa;
+  --chat-text: #1a1a1a;
+  --chat-text-secondary: #666;
+  --chat-text-tertiary: #999;
+  --chat-btn-bg: #ffffff;
+  --chat-btn-hover: #f5f5f5;
+}
+
+:root[data-theme="dark"] {
+  --code-block-bg: #0d1117;
+  --code-select-color: #d4d4d4;
+  --page-bg: #0d1117;
+  --page-text: #e6edf3;
+  --header-bg: #161b22;
+  --header-border: #30363d;
+  --editor-bg: #0d1117;
+  --editor-border: #30363d;
+  --chat-bg: #0d1117;
+  --chat-border: #30363d;
+  --chat-header-bg: #161b22;
+  --chat-text: #e6edf3;
+  --chat-text-secondary: #8b949e;
+  --chat-text-tertiary: #6e7681;
+  --chat-btn-bg: #21262d;
+  --chat-btn-hover: #30363d;
+}
+
+/* Default to light theme */
+:root {
+  --code-block-bg: #f6f8fa;
+  --code-select-color: #24292f;
+  --page-bg: #fafafa;
+  --page-text: #333;
+  --header-bg: #ffffff;
+  --header-border: #e0e0e0;
+  --editor-bg: #ffffff;
+  --editor-border: #e0e0e0;
+  --chat-bg: #ffffff;
+  --chat-border: #e0e0e0;
+  --chat-header-bg: #fafafa;
+  --chat-text: #1a1a1a;
+  --chat-text-secondary: #666;
+  --chat-text-tertiary: #999;
+  --chat-btn-bg: #ffffff;
+  --chat-btn-hover: #f5f5f5;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -9,8 +68,9 @@ body {
     'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #fafafa;
-  color: #333;
+  background-color: var(--page-bg);
+  color: var(--page-text);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 #root {
@@ -18,13 +78,68 @@ body {
   min-height: 100vh;
 }
 
+/* Code block container background - uses CSS variables that change with theme */
+.bn-block-content[data-content-type="codeBlock"] {
+  background-color: var(--code-block-bg) !important;
+  border-radius: 6px;
+  padding: 12px;
+  transition: background-color 0.2s ease;
+}
+
+/* Code block content area */
+.bn-block-content[data-content-type="codeBlock"] pre {
+  background-color: transparent !important;
+  margin: 0;
+}
+
+/* Code block text - ensure readable text color */
+.bn-block-content[data-content-type="codeBlock"] pre code {
+  color: var(--code-select-color) !important;
+}
+
+/* Code spans (for syntax-highlighted code) */
+.bn-block-content[data-content-type="codeBlock"] pre code span {
+  /* Syntax highlighting will override this with specific colors */
+  color: inherit;
+}
+
 /* Code block language selector styles */
 .bn-block-content[data-content-type="codeBlock"] > div[contenteditable="false"] > select {
   display: block;
-  color: #d4d4d4;
+  color: var(--code-select-color);
   background-color: transparent;
 }
 
 .bn-block-content[data-content-type="codeBlock"] > div[contenteditable="false"] > select:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* BlockNote menu icons - theme them for dark mode */
+:root[data-theme="dark"] .bn-suggestion-menu-item-icon,
+:root[data-theme="dark"] .bn-side-menu-button,
+:root[data-theme="dark"] .bn-toolbar-button {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* BlockNote suggestion menu items in dark mode */
+:root[data-theme="dark"] .bn-suggestion-menu-item {
+  background-color: var(--editor-bg);
+  color: var(--page-text);
+}
+
+:root[data-theme="dark"] .bn-suggestion-menu-item:hover,
+:root[data-theme="dark"] .bn-suggestion-menu-item[data-hovered="true"] {
+  background-color: var(--chat-btn-hover);
+}
+
+/* BlockNote editor - remove all internal backgrounds */
+.bn-editor,
+.bn-editor > *,
+.bn-editor .ProseMirror,
+.bn-editor .bn-editor-content,
+.bn-container,
+.bn-block-outer,
+.bn-block-group,
+.bn-block-content {
+  background-color: transparent !important;
 }

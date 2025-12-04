@@ -109,7 +109,7 @@ export function ChatMessages({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#999",
+          color: "var(--chat-text-tertiary)",
           fontSize: "14px",
           fontStyle: "italic",
         }}
