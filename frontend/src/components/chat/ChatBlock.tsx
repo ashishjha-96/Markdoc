@@ -15,7 +15,6 @@ import { useChatReadReceipts } from "../../hooks/useChatReadReceipts";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { useBlockNoteEditor } from "@blocknote/react";
-import { useTheme } from "../../contexts/ThemeContext";
 import {
   loadFloatingState,
   saveFloatingState,
