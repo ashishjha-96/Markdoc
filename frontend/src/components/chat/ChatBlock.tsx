@@ -15,6 +15,12 @@ import { useChatReadReceipts } from "../../hooks/useChatReadReceipts";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { useBlockNoteEditor } from "@blocknote/react";
+import {
+  loadFloatingState,
+  saveFloatingState,
+  clearFloatingState,
+  getDefaultFloatingPosition,
+} from "../../lib/floatingChats";
 
 // Context for sharing editor-level data with chat blocks
 export interface EditorContextData {
@@ -57,6 +63,14 @@ export function ChatBlock({ block }: ChatBlockProps) {
   const resizeStartHeight = useRef(0);
   const resizeStartWidth = useRef(0);
 
+  // Floating state
+  const [isFloating, setIsFloating] = useState(false);
+  const [floatingPosition, setFloatingPosition] = useState({ x: 0, y: 0 });
+  const [floatingZIndex, setFloatingZIndex] = useState(2000);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const dragStartWindowPos = useRef({ x: 0, y: 0 });
+
   if (!context) {
     return (
       <div
@@ -97,6 +111,144 @@ export function ChatBlock({ block }: ChatBlockProps) {
     userId
   );
 
+  // Load floating state from localStorage on mount
+  useEffect(() => {
+    const savedState = loadFloatingState(chatId);
+    if (savedState?.isFloating) {
+      setIsFloating(true);
+      setFloatingPosition({ x: savedState.x, y: savedState.y });
+      setWidth(savedState.width);
+      setHeight(savedState.height);
+      setFloatingZIndex(savedState.zIndex || 2000);
+    }
+  }, [chatId]);
+
+  // Toggle floating handler
+  const handleToggleFloating = useCallback(() => {
+    if (isFloating) {
+      // Dock: Clear floating state
+      setIsFloating(false);
+      clearFloatingState(chatId);
+
+      // Restore to Y.js dimensions
+      setWidth(block.props.width || 600);
+      setHeight(block.props.height || 400);
+    } else {
+      // Float: Save current state to localStorage
+      const defaultPos = getDefaultFloatingPosition(width, height);
+      setIsFloating(true);
+      setFloatingPosition(defaultPos);
+
+      saveFloatingState(chatId, {
+        isFloating: true,
+        x: defaultPos.x,
+        y: defaultPos.y,
+        width,
+        height,
+        zIndex: 2000,
+      });
+    }
+  }, [isFloating, chatId, width, height, block.props.width, block.props.height]);
+
+  // Drag handlers for floating windows
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    dragStartWindowPos.current = { ...floatingPosition };
+  }, [floatingPosition]);
+
+  const handleDragMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - dragStartPos.current.x;
+    const deltaY = e.clientY - dragStartPos.current.y;
+
+    const newX = dragStartWindowPos.current.x + deltaX;
+    const newY = Math.max(0, dragStartWindowPos.current.y + deltaY); // Prevent dragging above viewport
+
+    setFloatingPosition({ x: newX, y: newY });
+  }, [isDragging]);
+
+  const handleDragEnd = useCallback(() => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    // Save position to localStorage
+    saveFloatingState(chatId, {
+      isFloating: true,
+      x: floatingPosition.x,
+      y: floatingPosition.y,
+      width,
+      height,
+      zIndex: floatingZIndex,
+    });
+  }, [isDragging, chatId, floatingPosition, width, height, floatingZIndex]);
+
+  // Add/remove drag event listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('mouseup', handleDragEnd);
+      document.body.style.cursor = 'move';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
+  // Focus handler (bring to front)
+  const handleFocusFloating = useCallback(() => {
+    if (!isFloating) return;
+
+    const newZIndex = 2000 + (Date.now() % 1000); // Simple increment
+    setFloatingZIndex(newZIndex);
+
+    saveFloatingState(chatId, {
+      isFloating: true,
+      x: floatingPosition.x,
+      y: floatingPosition.y,
+      width,
+      height,
+      zIndex: newZIndex,
+    });
+  }, [isFloating, chatId, floatingPosition, width, height]);
+
+  // Adjust floating position on viewport resize
+  useEffect(() => {
+    if (!isFloating) return;
+
+    const handleViewportResize = () => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Check if window is now off-screen
+      if (floatingPosition.x + width > viewportWidth ||
+          floatingPosition.y + height > viewportHeight) {
+        const newPos = getDefaultFloatingPosition(width, height);
+        setFloatingPosition(newPos);
+
+        saveFloatingState(chatId, {
+          isFloating: true,
+          x: newPos.x,
+          y: newPos.y,
+          width,
+          height,
+          zIndex: floatingZIndex,
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleViewportResize);
+    return () => window.removeEventListener('resize', handleViewportResize);
+  }, [isFloating, floatingPosition, width, height, chatId, floatingZIndex]);
+
   // Corner resize handlers (both height and width)
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -124,13 +276,25 @@ export function ChatBlock({ block }: ChatBlockProps) {
     if (!isResizing) return;
     setIsResizing(false);
 
-    // Update block props to persist both dimensions
-    if (editor) {
-      editor.updateBlock(block.id, {
-        props: { ...block.props, height, width },
+    if (isFloating) {
+      // Save to localStorage instead of Y.js when floating
+      saveFloatingState(chatId, {
+        isFloating: true,
+        x: floatingPosition.x,
+        y: floatingPosition.y,
+        width,
+        height,
+        zIndex: floatingZIndex,
       });
+    } else {
+      // Update block props to persist both dimensions
+      if (editor) {
+        editor.updateBlock(block.id, {
+          props: { ...block.props, height, width },
+        });
+      }
     }
-  }, [isResizing, editor, block.id, block.props, height, width]);
+  }, [isResizing, isFloating, chatId, floatingPosition, width, height, floatingZIndex, editor, block.id, block.props]);
 
   // Add/remove mouse event listeners for resizing
   useEffect(() => {
@@ -201,9 +365,21 @@ export function ChatBlock({ block }: ChatBlockProps) {
     );
   }
 
-  return (
-    <div
-      style={{
+  // Container styles based on floating state
+  const containerStyle: React.CSSProperties = isFloating
+    ? {
+        position: "fixed",
+        left: `${floatingPosition.x}px`,
+        top: `${floatingPosition.y}px`,
+        zIndex: floatingZIndex,
+        border: "1px solid #e0e0e0",
+        borderRadius: "8px",
+        backgroundColor: "white",
+        overflow: "hidden",
+        width: `${width}px`,
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+      }
+    : {
         border: "1px solid #e0e0e0",
         borderRadius: "8px",
         backgroundColor: "white",
@@ -212,20 +388,28 @@ export function ChatBlock({ block }: ChatBlockProps) {
         overflow: "hidden",
         width: `${width}px`,
         position: "relative",
-      }}
-      contentEditable={false}
-    >
-      {/* Header */}
+      };
+
+  return (
+    <>
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "12px 16px",
-          borderBottom: "1px solid #e0e0e0",
-          backgroundColor: "#fafafa",
-        }}
+        style={containerStyle}
+        contentEditable={false}
+        onClick={isFloating ? handleFocusFloating : undefined}
       >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 16px",
+            borderBottom: "1px solid #e0e0e0",
+            backgroundColor: "#fafafa",
+            cursor: isFloating && !isEditingTitle ? "move" : "default",
+          }}
+          onMouseDown={isFloating && !isEditingTitle ? handleDragStart : undefined}
+        >
         <div
           style={{
             display: "flex",
@@ -324,7 +508,10 @@ export function ChatBlock({ block }: ChatBlockProps) {
         <div style={{ display: "flex", gap: "8px" }}>
           {/* Minimize button */}
           <button
-            onClick={() => setIsMinimized(!isMinimized)}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent drag when clicking button
+              setIsMinimized(!isMinimized);
+            }}
             style={{
               width: "24px",
               height: "24px",
@@ -347,6 +534,37 @@ export function ChatBlock({ block }: ChatBlockProps) {
             title={isMinimized ? "Expand" : "Minimize"}
           >
             {isMinimized ? "□" : "_"}
+          </button>
+
+          {/* Float/Dock button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent drag when clicking button
+              handleToggleFloating();
+            }}
+            style={{
+              width: "24px",
+              height: "24px",
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              backgroundColor: "white",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "14px",
+              color: "#646cff",
+              fontWeight: 800
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#f5f5f5";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "white";
+            }}
+            title={isFloating ? "Dock to document" : "Open in floating window"}
+          >
+            {isFloating ? "↙" : <span>&#8599;</span>}
           </button>
         </div>
       </div>
@@ -381,25 +599,12 @@ export function ChatBlock({ block }: ChatBlockProps) {
               right: 0,
               width: "16px",
               height: "16px",
-              backgroundColor: isResizing ? "#646cff" : "#f5f5f5",
               cursor: "nwse-resize",
-              borderLeft: "1px solid #e0e0e0",
-              borderTop: "1px solid #e0e0e0",
               borderBottomRightRadius: "8px",
               transition: "background-color 0.2s",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-            }}
-            onMouseEnter={(e) => {
-              if (!isResizing) {
-                e.currentTarget.style.backgroundColor = "#e0e0e0";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isResizing) {
-                e.currentTarget.style.backgroundColor = "#f5f5f5";
-              }
             }}
           >
             <div
@@ -408,7 +613,7 @@ export function ChatBlock({ block }: ChatBlockProps) {
                 height: "8px",
                 borderRight: "2px solid #999",
                 borderBottom: "2px solid #999",
-                transform: "rotate(-45deg) translateY(-2px)",
+                
               }}
             />
           </div>
@@ -467,6 +672,28 @@ export function ChatBlock({ block }: ChatBlockProps) {
           </div>
         );
       })()}
-    </div>
+      </div>
+
+      {/* Placeholder in document when floating */}
+      {isFloating && (
+        <div
+          style={{
+            border: "1px dashed #e0e0e0",
+            borderRadius: "8px",
+            backgroundColor: "#fafafa",
+            marginTop: "8px",
+            marginBottom: "8px",
+            padding: "16px",
+            color: "#999",
+            fontSize: "13px",
+            fontStyle: "italic",
+            textAlign: "center",
+          }}
+          contentEditable={false}
+        >
+          💬 {block.props.title || "Chat Discussion"} • Opened in floating window
+        </div>
+      )}
+    </>
   );
 }
