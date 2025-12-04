@@ -142,6 +142,37 @@ defmodule MarkdocWeb.DocChannel do
   end
 
   @impl true
+  def handle_in("chat_typing", %{"chat_id" => chat_id, "is_typing" => is_typing}, socket) do
+    user_id = socket.assigns.user_id
+    user_name = socket.assigns.user_name
+
+    # Broadcast typing status (ephemeral, no persistence)
+    broadcast_from!(socket, "chat_typing", %{
+      chat_id: chat_id,
+      user_id: user_id,
+      user_name: user_name,
+      is_typing: is_typing
+    })
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_in("chat_read", %{"chat_id" => chat_id, "message_id" => message_id}, socket) do
+    user_id = socket.assigns.user_id
+
+    # Broadcast read receipt (ephemeral, no persistence)
+    broadcast_from!(socket, "chat_read", %{
+      chat_id: chat_id,
+      user_id: user_id,
+      last_read_message_id: message_id,
+      timestamp: System.system_time(:millisecond)
+    })
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info(:after_join, socket) do
     user_id = socket.assigns.user_id
     user_name = socket.assigns.user_name

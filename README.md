@@ -13,6 +13,16 @@ Markdoc is an ephemeral collaboration engine that demonstrates how to build real
 - CRDT-based consistency using Y.js
 - Built on the BEAM VM for fault tolerance and scalability
 
+## Features
+
+- **Block-based Rich Text Editor** - Notion-like editing with BlockNote
+- **Real-time Collaboration** - Multiple users editing simultaneously with CRDT-based conflict resolution
+- **Live Cursors** - See where other users are editing in real-time
+- **User Presence** - See who's currently in the document
+- **Chat Blocks** - Embedded chat discussions with typing indicators, reactions, read receipts, and resizable layout (use `/chat` command)
+- **Syntax Highlighting** - Code blocks with language-specific syntax highlighting
+- **Export Options** - Export documents as Markdown or HTML
+
 ## Technologies Used
 
 **Backend:**

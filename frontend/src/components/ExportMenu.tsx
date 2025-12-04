@@ -14,7 +14,7 @@ import {
 } from "../lib/exportDocument";
 
 interface ExportMenuProps {
-  editor: BlockNoteEditor;
+  editor: BlockNoteEditor<any, any, any>;
   docId: string;
   onNewDocument: () => void;
 }

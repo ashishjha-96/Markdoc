@@ -6,8 +6,14 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import {
+  SuggestionMenuController,
+  getDefaultReactSlashMenuItems,
+  useCreateBlockNote,
+} from "@blocknote/react";
+import type { BlockNoteEditor } from "@blocknote/core";
 import * as Y from "yjs";
+import { nanoid } from "nanoid";
 import { schema } from "../lib/editorSchema";
 import { PhoenixProvider } from "../lib/PhoenixProvider";
 import type { UserInfo } from "../lib/PhoenixProvider";
@@ -17,7 +23,9 @@ import { NamePrompt } from "./NamePrompt";
 import { Cursors } from "./Cursors";
 import { ExportMenu } from "./ExportMenu";
 import { useCursors } from "../hooks/useCursors";
+import { usePresence } from "../hooks/usePresence";
 import { generateDocId } from "../lib/generateDocId";
+import { EditorContext } from "./chat/ChatBlock";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 
@@ -36,6 +44,53 @@ const generateColor = () =>
     )
     .join("");
 
+// Custom slash menu item for chat block
+const insertChatBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
+  title: "Chat",
+  onItemClick: () => {
+    const currentBlock = editor.getTextCursorPosition().block;
+    editor.insertBlocks(
+      [{
+        type: "chat" as any,
+        props: {
+          chatId: nanoid(),
+          title: "Chat Discussion",
+          minimized: false,
+          height: 400,
+          width: 600,
+        }
+      }],
+      currentBlock.id,
+      "after"
+    );
+  },
+  aliases: ["chat", "message", "discussion", "conversation"],
+  group: "Other",
+  icon: "💬" as any,
+  subtext: "Start a collaborative chat discussion",
+});
+
+// Get all slash menu items including chat block
+const getCustomSlashMenuItems = (editor: BlockNoteEditor<any, any, any>) => [
+  ...getDefaultReactSlashMenuItems(editor),
+  insertChatBlockItem(editor),
+];
+
+// Filter slash menu items based on query
+const filterSlashMenuItems = (
+  items: ReturnType<typeof getCustomSlashMenuItems>,
+  query: string
+) => {
+  const lowerQuery = query.toLowerCase();
+  return items.filter((item) => {
+    const matchesTitle = item.title.toLowerCase().includes(lowerQuery);
+    const matchesAliases = item.aliases?.some((alias) =>
+      alias.toLowerCase().includes(lowerQuery)
+    );
+    return matchesTitle || matchesAliases;
+  });
+};
+
 export function Editor({ docId }: EditorProps) {
   const [provider, setProvider] = useState<PhoenixProvider | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -49,6 +104,9 @@ export function Editor({ docId }: EditorProps) {
 
   // Track cursors separately (to avoid presence spam)
   const cursors = useCursors(provider?.channel || null);
+
+  // Track user presence
+  const presenceUsers = usePresence(provider?.channel || null);
 
   // Handler for creating a new document
   const handleNewDocument = () => {
@@ -185,6 +243,54 @@ export function Editor({ docId }: EditorProps) {
     };
   }, [provider, editor]);
 
+  // Clean up orphaned chats (deleted blocks)
+  useEffect(() => {
+    if (!provider || !editor) return;
+
+    const interval = setInterval(() => {
+      try {
+        const blocks = editor.document;
+        const activeChatIds = new Set(
+          blocks
+            .filter((b) => b.type === "chat")
+            .map((b) => (b.props as any).chatId)
+            .filter((id) => id) // Filter out empty IDs
+        );
+
+        const chatsMap = doc.getMap("chats");
+        chatsMap.forEach((_, chatId) => {
+          if (!activeChatIds.has(chatId as string)) {
+            chatsMap.delete(chatId as string); // Remove orphaned chat
+            console.log(`🗑️ Cleaned up orphaned chat: ${chatId}`);
+          }
+        });
+      } catch (error) {
+        console.error("Error cleaning up chats:", error);
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [provider, editor, doc]);
+
+  // Generate stable user ID (persists across re-renders)
+  const userId = useMemo(() => {
+    return `user_${Math.floor(Math.random() * 1000000)}`;
+  }, []);
+
+  // Prepare context data for chat blocks
+  const editorContextValue = useMemo(() => {
+    if (!provider || !userInfo) return null;
+
+    return {
+      doc,
+      channel: provider.channel,
+      userId,
+      userName: userInfo.name,
+      userColor,
+      presenceUsers,
+    };
+  }, [provider, userInfo, doc, userId, userColor, presenceUsers]);
+
   return (
     <>
       {/* Show name prompt if needed */}
@@ -265,6 +371,53 @@ export function Editor({ docId }: EditorProps) {
               {/* User Presence Avatars */}
               <UserPresence channel={provider?.channel || null} />
 
+              {/* Add Chat Button */}
+              {editor && (
+                <button
+                  onClick={() => {
+                    const currentBlock = editor.getTextCursorPosition().block;
+                    editor.insertBlocks(
+                      [{
+                        type: "chat" as any,
+                        props: {
+                          chatId: nanoid(),
+                          title: "Chat Discussion",
+                          minimized: false,
+                          height: 400,
+                          width: 600,
+                        }
+                      }],
+                      currentBlock.id,
+                      "after"
+                    );
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    backgroundColor: "#646cff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#535bf2";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#646cff";
+                  }}
+                  title="Insert Chat Block"
+                >
+                  <span style={{ fontSize: "16px" }}>💬</span>
+                  <span>Add Chat</span>
+                </button>
+              )}
+
               {/* Combined Menu (New Document + Export) */}
               {editor && (
                 <ExportMenu
@@ -294,7 +447,33 @@ export function Editor({ docId }: EditorProps) {
               minHeight: "calc(100vh - 200px)",
             }}
           >
-            <BlockNoteView editor={editor} theme="light" />
+            {editorContextValue ? (
+              <EditorContext.Provider value={editorContextValue}>
+                <BlockNoteView editor={editor} theme="light" slashMenu={false}>
+                  <SuggestionMenuController
+                    triggerCharacter={"/"}
+                    getItems={async (query) =>
+                      filterSlashMenuItems(
+                        getCustomSlashMenuItems(editor),
+                        query
+                      )
+                    }
+                  />
+                </BlockNoteView>
+              </EditorContext.Provider>
+            ) : (
+              <BlockNoteView editor={editor} theme="light" slashMenu={false}>
+                <SuggestionMenuController
+                  triggerCharacter={"/"}
+                  getItems={async (query) =>
+                    filterSlashMenuItems(
+                      getCustomSlashMenuItems(editor),
+                      query
+                    )
+                  }
+                />
+              </BlockNoteView>
+            )}
           </div>
         </div>
 
