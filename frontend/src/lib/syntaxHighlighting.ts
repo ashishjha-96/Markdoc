@@ -44,7 +44,6 @@ let currentThemeMode: "light" | "dark" = "light";
  */
 export function setThemeMode(mode: "light" | "dark") {
   currentThemeMode = mode;
-  console.log(`🎨 Theme mode changed to: ${mode}`);
 }
 
 /**
@@ -60,14 +59,10 @@ function getCurrentTheme(): string {
  * Loads BOTH light and dark themes for switching.
  */
 export async function createShikiHighlighter() {
-  console.log(`🎨 Creating Shiki highlighter with both themes:`, THEMES);
-
   const highlighter = await createHighlighter({
     themes: [THEMES.light, THEMES.dark],
     langs: Object.keys(SUPPORTED_LANGUAGES),
   });
-
-  console.log(`✅ Shiki highlighter created successfully with both themes`);
 
   // Wrap the highlighter to dynamically use current theme
   const wrappedHighlighter = {

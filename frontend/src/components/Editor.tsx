@@ -100,10 +100,8 @@ export function Editor({ docId }: EditorProps) {
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const { mode } = useTheme();
 
-  // Update syntax highlighting theme when mode changes
-  useEffect(() => {
-    setThemeMode(mode);
-  }, [mode]);
+  // Update syntax highlighting theme before editor creation
+  setThemeMode(mode);
 
   // Create Y.js document (persists across re-renders)
   const doc = useMemo(() => new Y.Doc(), []);
@@ -162,7 +160,7 @@ export function Editor({ docId }: EditorProps) {
           }
         : undefined,
     },
-    [provider] // Recreate editor when provider changes
+    [provider, mode] // Recreate editor when provider or mode changes
   );
 
   // Initialize Phoenix provider only after we have user info
