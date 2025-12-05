@@ -24,9 +24,12 @@ import { NamePrompt } from "./NamePrompt";
 import { Cursors } from "./Cursors";
 import { ExportMenu } from "./ExportMenu";
 import { ThemeToggle } from "./ThemeToggle";
+import { SearchBar } from "./SearchBar";
+import { KeyboardShortcutsMenu } from "./KeyboardShortcutsMenu";
 import { useTheme } from "../contexts/ThemeContext";
 import { useCursors } from "../hooks/useCursors";
 import { usePresence } from "../hooks/usePresence";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { generateDocId } from "../lib/generateDocId";
 import { EditorContext } from "./chat/ChatBlock";
 import "@blocknote/core/fonts/inter.css";
@@ -109,12 +112,6 @@ export function Editor({ docId }: EditorProps) {
   // Generate a random user color (persists across re-renders)
   const userColor = useMemo(() => generateColor(), []);
 
-  // Track cursors separately (to avoid presence spam)
-  const cursors = useCursors(provider?.channel || null);
-
-  // Track user presence
-  const presenceUsers = usePresence(provider?.channel || null);
-
   // Handler for creating a new document
   const handleNewDocument = () => {
     const newDocId = generateDocId();
@@ -162,6 +159,15 @@ export function Editor({ docId }: EditorProps) {
     },
     [provider, mode] // Recreate editor when provider or mode changes
   );
+
+  // Track cursors separately (to avoid presence spam)
+  const cursors = useCursors(provider?.channel || null);
+
+  // Track user presence
+  const presenceUsers = usePresence(provider?.channel || null);
+
+  // Enable custom keyboard shortcuts
+  useKeyboardShortcuts(editor);
 
   // Initialize Phoenix provider only after we have user info
   useEffect(() => {
@@ -383,6 +389,9 @@ export function Editor({ docId }: EditorProps) {
               {/* User Presence Avatars */}
               <UserPresence channel={provider?.channel || null} />
 
+              {/* Search Bar */}
+              {editor && <SearchBar editor={editor} />}
+
               {/* Theme Toggle */}
               <ThemeToggle />
 
@@ -418,7 +427,7 @@ export function Editor({ docId }: EditorProps) {
           >
             {editorContextValue ? (
               <EditorContext.Provider value={editorContextValue}>
-                <BlockNoteView editor={editor} theme={mode} slashMenu={false}>
+                <BlockNoteView editor={editor} theme={mode} slashMenu={false} sideMenu={true}>
                   <SuggestionMenuController
                     triggerCharacter={"/"}
                     getItems={async (query) =>
@@ -431,7 +440,7 @@ export function Editor({ docId }: EditorProps) {
                 </BlockNoteView>
               </EditorContext.Provider>
             ) : (
-              <BlockNoteView editor={editor} theme={mode} slashMenu={false}>
+              <BlockNoteView editor={editor} theme={mode} slashMenu={false} sideMenu={true}>
                 <SuggestionMenuController
                   triggerCharacter={"/"}
                   getItems={async (query) =>
@@ -451,6 +460,9 @@ export function Editor({ docId }: EditorProps) {
 
         {/* Collaborative Cursors */}
         <Cursors cursors={cursors} />
+
+        {/* Keyboard Shortcuts Menu */}
+        <KeyboardShortcutsMenu />
       </div>
     </>
   );

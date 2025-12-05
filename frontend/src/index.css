@@ -12,6 +12,7 @@
   --header-border: #e0e0e0;
   --editor-bg: #ffffff;
   --editor-border: #e0e0e0;
+  --block-selection-bg: #e3f2fd;
   --chat-bg: #ffffff;
   --chat-border: #e0e0e0;
   --chat-header-bg: #fafafa;
@@ -31,6 +32,7 @@
   --header-border: #30363d;
   --editor-bg: #0d1117;
   --editor-border: #30363d;
+  --block-selection-bg: #1c3d5a;
   --chat-bg: #0d1117;
   --chat-border: #30363d;
   --chat-header-bg: #161b22;
@@ -51,6 +53,7 @@
   --header-border: #e0e0e0;
   --editor-bg: #ffffff;
   --editor-border: #e0e0e0;
+  --block-selection-bg: #e3f2fd;
   --chat-bg: #ffffff;
   --chat-border: #e0e0e0;
   --chat-header-bg: #fafafa;
@@ -116,9 +119,15 @@ body {
 
 /* BlockNote menu icons - theme them for dark mode */
 :root[data-theme="dark"] .bn-suggestion-menu-item-icon,
-:root[data-theme="dark"] .bn-side-menu-button,
 :root[data-theme="dark"] .bn-toolbar-button {
   filter: invert(1) hue-rotate(180deg);
+}
+
+/* Side menu buttons in dark mode - keep visible */
+:root[data-theme="dark"] .bn-side-menu-button,
+:root[data-theme="dark"] .bn-drag-handle-button {
+  filter: none;
+  color: var(--page-text) !important;
 }
 
 /* BlockNote suggestion menu items in dark mode */
@@ -132,9 +141,9 @@ body {
   background-color: var(--chat-btn-hover);
 }
 
-/* BlockNote editor - remove all internal backgrounds */
+/* BlockNote editor - remove all internal backgrounds (but not side menu) */
 .bn-editor,
-.bn-editor > *,
+.bn-editor > *:not(.bn-side-menu),
 .bn-editor .ProseMirror,
 .bn-editor .bn-editor-content,
 .bn-container,
@@ -142,4 +151,232 @@ body {
 .bn-block-group,
 .bn-block-content {
   background-color: transparent !important;
+}
+
+/* Side menu styling - make sure it's visible */
+.bn-side-menu {
+  background-color: transparent !important;
+}
+
+.bn-side-menu-button,
+.bn-drag-handle-button {
+  background-color: var(--chat-btn-bg) !important;
+  border: 1px solid var(--editor-border) !important;
+  border-radius: 4px !important;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease !important;
+}
+
+.bn-block-outer:hover .bn-side-menu-button,
+.bn-block-outer:hover .bn-drag-handle-button {
+  opacity: 1;
+}
+
+.bn-side-menu-button:hover,
+.bn-drag-handle-button:hover {
+  background-color: var(--chat-btn-hover) !important;
+  cursor: pointer !important;
+}
+
+/* Block selection highlighting - multiple selectors for different selection states */
+.bn-block-outer.ProseMirror-selectednode,
+.bn-block-outer[data-node-type].ProseMirror-selectednode,
+.bn-block.ProseMirror-selectednode,
+.ProseMirror-selectednode > .bn-block-outer,
+.bn-block-outer[data-is-selected="true"],
+.bn-block-content:has(.ProseMirror-selectednode) {
+  background-color: var(--block-selection-bg) !important;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  outline: 2px solid rgba(100, 108, 255, 0.3) !important;
+  outline-offset: -2px;
+}
+
+/* Selection via click (entire block selected) */
+.bn-block-outer:focus-within {
+  background-color: var(--block-selection-bg) !important;
+  border-radius: 4px;
+  outline: 2px solid rgba(100, 108, 255, 0.3);
+  outline-offset: -2px;
+}
+
+/* Subtle hover effect on blocks */
+.bn-block-outer:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+:root[data-theme="dark"] .bn-block-outer:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+:root[data-theme="dark"] .bn-block-outer:focus-within {
+  outline-color: rgba(100, 108, 255, 0.5);
+}
+
+/* Block animations */
+.bn-block-outer {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Fade in animation for new blocks */
+@keyframes slideInBlock {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade out animation for deleted blocks */
+@keyframes slideOutBlock {
+  from {
+    opacity: 1;
+    max-height: 500px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Apply animations when blocks are added/removed */
+.bn-block-outer[data-is-new="true"] {
+  animation: slideInBlock 0.25s ease-out;
+}
+
+/* Smooth drag and drop */
+.bn-block-outer[draggable="true"]:active {
+  cursor: grabbing;
+  opacity: 0.7;
+  transform: scale(0.98);
+  transition: all 0.15s ease;
+}
+
+/* Table enhancements */
+.bn-block-content[data-content-type="table"] table {
+  border-collapse: collapse;
+  width: 100%;
+  border: 1px solid var(--editor-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bn-block-content[data-content-type="table"] th,
+.bn-block-content[data-content-type="table"] td {
+  border: 1px solid var(--editor-border);
+  padding: 12px 16px;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.bn-block-content[data-content-type="table"] th {
+  background-color: var(--chat-header-bg);
+  font-weight: 600;
+  color: var(--page-text);
+}
+
+.bn-block-content[data-content-type="table"] td:hover {
+  background-color: var(--chat-btn-hover);
+}
+
+.bn-block-content[data-content-type="table"] tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+:root[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Table cell focus */
+.bn-block-content[data-content-type="table"] td:focus-within,
+.bn-block-content[data-content-type="table"] th:focus-within {
+  outline: 2px solid #646cff;
+  outline-offset: -2px;
+  background-color: var(--chat-btn-hover);
+}
+
+/* Table controls styling */
+.bn-block-content[data-content-type="table"] button {
+  background-color: var(--chat-btn-bg);
+  color: var(--page-text);
+  border: 1px solid var(--editor-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.bn-block-content[data-content-type="table"] button:hover {
+  background-color: var(--chat-btn-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Floating search bar animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Keyboard shortcuts menu animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Search highlighting */
+.search-highlight {
+  background-color: rgba(255, 235, 59, 0.3) !important;
+  border-left: 3px solid #fbc02d !important;
+  border-radius: 4px !important;
+  padding-left: 8px !important;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme="dark"] .search-highlight {
+  background-color: rgba(255, 235, 59, 0.15) !important;
+  border-left: 3px solid #f9a825 !important;
+}
+
+/* Flash animation for current search result */
+@keyframes searchFlash {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(100, 108, 255, 0.3);
+  }
+}
+
+.search-highlight-flash {
+  animation: searchFlash 0.6s ease-in-out 2;
 }
