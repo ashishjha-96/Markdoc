@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 import type { BlockNoteEditor } from "@blocknote/core";
 
-export function useKeyboardShortcuts(editor: BlockNoteEditor | null) {
+export function useKeyboardShortcuts(editor: BlockNoteEditor<any, any, any> | null) {
   useEffect(() => {
     if (!editor) return;
 

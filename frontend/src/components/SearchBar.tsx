@@ -7,7 +7,7 @@ import type { BlockNoteEditor, Block } from "@blocknote/core";
 import { useTheme } from "../contexts/ThemeContext";
 
 interface SearchBarProps {
-  editor: BlockNoteEditor | null;
+  editor: BlockNoteEditor<any, any, any> | null;
 }
 
 interface SearchResult {
@@ -26,7 +26,7 @@ export function SearchBar({ editor }: SearchBarProps) {
   const { mode } = useTheme();
 
   // Extract text content from a block recursively
-  const extractBlockText = (block: Block): string => {
+  const extractBlockText = (block: Block<any, any, any>): string => {
     let text = "";
 
     // Handle block content
