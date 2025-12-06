@@ -7,7 +7,7 @@
 
 import { useRef, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface MermaidCodeEditorProps {
@@ -98,7 +98,7 @@ export function MermaidCodeEditor({
       {/* Syntax-highlighted background */}
       <SyntaxHighlighter
         language="mermaid"
-        style={mode === 'dark' ? vscDarkPlus : vs}
+        style={mode === 'dark' ? oneDark : oneLight}
         customStyle={highlighterStyle}
         codeTagProps={{
           style: {
