@@ -100,6 +100,13 @@ defmodule Markdoc.DocServer do
     GenServer.cast(Markdoc.DocRegistry.via_tuple(doc_id), {:save_snapshot, snapshot_binary})
   end
 
+  @doc """
+  Forces a flush to the configured storage backend.
+  """
+  def flush(doc_id) when is_binary(doc_id) do
+    GenServer.call(Markdoc.DocRegistry.via_tuple(doc_id), :flush)
+  end
+
   ## Server Callbacks
 
   @impl true
@@ -275,6 +282,12 @@ defmodule Markdoc.DocServer do
   @impl true
   def handle_call(:get_history, _from, state) do
     {:reply, state.history, state}
+  end
+
+  @impl true
+  def handle_call(:flush, _from, state) do
+    new_state = maybe_flush(state, :manual)
+    {:reply, :ok, new_state}
   end
 
   @impl true

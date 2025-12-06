@@ -31,6 +31,24 @@ defmodule Markdoc.Application do
     Supervisor.start_link(children, opts)
   end
 
+  @impl true
+  def stop(_state) do
+    doc_ids =
+      Registry.select(Markdoc.DocRegistry, [
+        {{:"$1", :_, :_}, [], [:"$1"]}
+      ])
+
+    Enum.each(doc_ids, fn doc_id ->
+      try do
+        Markdoc.DocServer.flush(doc_id)
+      catch
+        _ -> :ok
+      end
+    end)
+
+    :ok
+  end
+
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
   @impl true
