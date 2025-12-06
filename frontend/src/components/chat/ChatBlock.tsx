@@ -124,6 +124,11 @@ export function ChatBlock({ block }: ChatBlockProps) {
     }
   }, [chatId]);
 
+  // Sync minimized state from block props
+  useEffect(() => {
+    setIsMinimized(block.props.minimized);
+  }, [block.props.minimized]);
+
   // Toggle floating handler
   const handleToggleFloating = useCallback(() => {
     if (isFloating) {
@@ -516,7 +521,15 @@ export function ChatBlock({ block }: ChatBlockProps) {
           <button
             onClick={(e) => {
               e.stopPropagation(); // Prevent drag when clicking button
-              setIsMinimized(!isMinimized);
+              const newMinimizedState = !isMinimized;
+              setIsMinimized(newMinimizedState);
+
+              // Persist minimized state to block props
+              if (editor) {
+                editor.updateBlock(block.id, {
+                  props: { ...block.props, minimized: newMinimizedState },
+                });
+              }
             }}
             style={{
               width: "24px",

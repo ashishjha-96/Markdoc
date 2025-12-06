@@ -26,6 +26,7 @@ import { ExportMenu } from "./ExportMenu";
 import { ThemeToggle } from "./ThemeToggle";
 import { SearchBar } from "./SearchBar";
 import { KeyboardShortcutsMenu } from "./KeyboardShortcutsMenu";
+import { TableOfContents } from "./TableOfContents";
 import { useTheme } from "../contexts/ThemeContext";
 import { useCursors } from "../hooks/useCursors";
 import { usePresence } from "../hooks/usePresence";
@@ -491,6 +492,9 @@ export function Editor({ docId }: EditorProps) {
 
         {/* Keyboard Shortcuts Menu */}
         <KeyboardShortcutsMenu />
+
+        {/* Table of Contents */}
+        {editor && <TableOfContents editor={editor} />}
       </div>
     </>
   );

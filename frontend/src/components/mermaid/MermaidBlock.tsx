@@ -91,6 +91,11 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
     };
   }, [yCode]);
 
+  // Sync minimized state from block props
+  useEffect(() => {
+    setIsMinimized(block.props.minimized);
+  }, [block.props.minimized]);
+
 
   // Prevent BlockNote from handling keyboard events in the textarea
   const handleTextareaKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -307,7 +312,17 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
 
           {/* Minimize button */}
           <button
-            onClick={() => setIsMinimized(!isMinimized)}
+            onClick={() => {
+              const newMinimizedState = !isMinimized;
+              setIsMinimized(newMinimizedState);
+
+              // Persist minimized state to block props
+              if (editor) {
+                editor.updateBlock(block.id, {
+                  props: { ...block.props, minimized: newMinimizedState },
+                });
+              }
+            }}
             style={{
               width: '24px',
               height: '24px',
