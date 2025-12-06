@@ -6,6 +6,7 @@
  */
 
 import type { BlockNoteEditor } from "@blocknote/core";
+import type * as Y from "yjs";
 
 /**
  * Generates a filename with document ID and timestamp
@@ -63,18 +64,40 @@ export function downloadFile(
 
 /**
  * Exports document to Markdown format
- * Uses editor.blocksToMarkdownLossy()
+ * Uses editor.blocksToMarkdownLossy() with custom Mermaid block handling
  */
 export async function exportToMarkdown(
   editor: BlockNoteEditor,
-  docId: string
+  docId: string,
+  yDoc?: Y.Doc
 ): Promise<void> {
   try {
     // Get current document blocks
     const blocks = editor.document;
 
     // Convert to markdown using BlockNote's built-in method
-    const markdown = await editor.blocksToMarkdownLossy(blocks);
+    let markdown = await editor.blocksToMarkdownLossy(blocks);
+
+    // Post-process to add Mermaid code blocks
+    if (yDoc) {
+      const mermaidDiagrams = yDoc.getMap('mermaidDiagrams');
+
+      blocks.forEach((block: any) => {
+        if (block.type === 'mermaid' && block.props?.diagramId) {
+          const diagramId = block.props.diagramId;
+          const yCode = mermaidDiagrams.get(diagramId) as Y.Text;
+
+          if (yCode) {
+            const code = yCode.toString();
+            const title = block.props.title || 'Mermaid Diagram';
+
+            // Create a Mermaid code block in markdown
+            const mermaidBlock = `\n\n### ${title}\n\n\`\`\`mermaid\n${code}\n\`\`\`\n\n`;
+            markdown += mermaidBlock;
+          }
+        }
+      });
+    }
 
     // Generate filename
     const filename = generateFilename(docId, "md");
@@ -139,6 +162,13 @@ ${html}
  */
 function extractTextFromBlock(block: any): string {
   let text = "";
+
+  // Handle Mermaid blocks specially - export the code
+  if (block.type === "mermaid") {
+    // Access the Y.js doc to get the actual Mermaid code
+    // Note: This requires access to the Y.Doc, so we'll handle it in markdown export
+    return ""; // Will be handled in the markdown export function
+  }
 
   // Handle block content (array of inline content)
   if (block.content && Array.isArray(block.content)) {

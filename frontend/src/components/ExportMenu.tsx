@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import type { BlockNoteEditor } from "@blocknote/core";
+import type * as Y from "yjs";
 import {
   exportToMarkdown,
   exportToHTML,
@@ -17,9 +18,10 @@ interface ExportMenuProps {
   editor: BlockNoteEditor<any, any, any>;
   docId: string;
   onNewDocument: () => void;
+  yDoc?: Y.Doc;
 }
 
-export function ExportMenu({ editor, docId, onNewDocument }: ExportMenuProps) {
+export function ExportMenu({ editor, docId, onNewDocument, yDoc }: ExportMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleNewDocument = () => {
@@ -32,7 +34,7 @@ export function ExportMenu({ editor, docId, onNewDocument }: ExportMenuProps) {
 
     switch (format) {
       case "markdown":
-        await exportToMarkdown(editor, docId);
+        await exportToMarkdown(editor, docId, yDoc);
         break;
       case "html":
         await exportToHTML(editor, docId);

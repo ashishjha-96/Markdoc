@@ -7,6 +7,7 @@ import {
   DEFAULT_LANGUAGE
 } from "./syntaxHighlighting";
 import { ChatBlock } from "../components/chat/ChatBlock";
+import { MermaidBlock } from "../components/mermaid/MermaidBlock";
 
 // Chat block specification
 const chatBlockSpec = createReactBlockSpec(
@@ -38,9 +39,39 @@ const chatBlockSpec = createReactBlockSpec(
   }
 );
 
+// Mermaid block specification
+const mermaidBlockSpec = createReactBlockSpec(
+  {
+    type: "mermaid" as const,
+    propSchema: {
+      diagramId: {
+        default: "",
+      },
+      title: {
+        default: "Mermaid Diagram",
+      },
+      minimized: {
+        default: false,
+      },
+      height: {
+        default: 400, // Default height in pixels
+      },
+      width: {
+        default: 600, // Default width in pixels
+      },
+    },
+    content: "none" as const,
+  },
+  {
+    render: (props) => {
+      return createElement(MermaidBlock, { block: props.block });
+    },
+  }
+);
+
 /**
- * Custom BlockNote schema with syntax-highlighted code blocks and chat blocks.
- * Overrides the codeBlock spec and adds a custom chat block.
+ * Custom BlockNote schema with syntax-highlighted code blocks, chat blocks, and mermaid blocks.
+ * Overrides the codeBlock spec and adds custom chat and mermaid blocks.
  */
 export const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -54,6 +85,8 @@ export const schema = BlockNoteSchema.create({
     }),
     // Add custom chat block
     chat: chatBlockSpec(),
+    // Add custom mermaid block
+    mermaid: mermaidBlockSpec(),
   },
 });
 

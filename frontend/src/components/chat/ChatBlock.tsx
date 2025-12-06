@@ -30,6 +30,7 @@ export interface EditorContextData {
   userName: string;
   userColor: string;
   presenceUsers: Record<string, UserPresence>;
+  awareness?: any; // Optional awareness for collaborative features
 }
 
 export const EditorContext = createContext<EditorContextData | null>(null);

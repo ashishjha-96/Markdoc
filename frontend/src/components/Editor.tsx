@@ -76,10 +76,37 @@ const insertChatBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
   subtext: "Start a collaborative chat discussion",
 });
 
-// Get all slash menu items including chat block
+// Custom slash menu item for Mermaid block
+const insertMermaidBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
+  title: "Mermaid Diagram",
+  onItemClick: () => {
+    const currentBlock = editor.getTextCursorPosition().block;
+    editor.insertBlocks(
+      [{
+        type: "mermaid" as any,
+        props: {
+          diagramId: nanoid(),
+          title: "Mermaid Diagram",
+          minimized: false,
+          height: 400,
+          width: 600,
+        }
+      }],
+      currentBlock.id,
+      "after"
+    );
+  },
+  aliases: ["mermaid", "diagram", "flowchart", "chart", "graph"],
+  group: "Other",
+  icon: "📊" as any,
+  subtext: "Create a Mermaid flowchart or diagram",
+});
+
+// Get all slash menu items including custom blocks
 const getCustomSlashMenuItems = (editor: BlockNoteEditor<any, any, any>) => [
   ...getDefaultReactSlashMenuItems(editor),
   insertChatBlockItem(editor),
+  insertMermaidBlockItem(editor),
 ];
 
 // Filter slash menu items based on query
@@ -401,6 +428,7 @@ export function Editor({ docId }: EditorProps) {
                   editor={editor}
                   docId={docId}
                   onNewDocument={handleNewDocument}
+                  yDoc={doc}
                 />
               )}
             </div>
