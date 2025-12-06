@@ -34,7 +34,7 @@ defmodule Markdoc.Storage.S3Adapter do
       "doc_id" => payload.doc_id,
       "created_at" => payload.created_at,
       "last_updated_at" => payload.last_updated_at,
-      "history" => Enum.map(payload.history, &:erlang.binary_to_list/1),
+      "history" => Enum.map(payload.history, &Base.encode64/1),
       "version" => payload.version
     }
 
@@ -148,17 +148,38 @@ defmodule Markdoc.Storage.S3Adapter do
        })
        when is_binary(doc_id) and is_integer(created_at) and is_integer(last_updated_at) and
               is_list(history) and is_integer(version) do
-    {:ok,
-     %{
-       doc_id: doc_id,
-       created_at: created_at,
-       last_updated_at: last_updated_at,
-       history: Enum.map(history, &:erlang.list_to_binary/1),
-       version: version
-     }}
+    case decode_history(history) do
+      {:ok, decoded_history} ->
+        {:ok,
+         %{
+           doc_id: doc_id,
+           created_at: created_at,
+           last_updated_at: last_updated_at,
+           history: decoded_history,
+           version: version
+         }}
+
+      error ->
+        error
+    end
   end
 
   defp normalize(_), do: {:error, :invalid_payload}
+
+  defp decode_history(history) do
+    decoded =
+      Enum.reduce_while(history, {:ok, []}, fn item, {:ok, acc} ->
+        case Base.decode64(item) do
+          {:ok, binary} -> {:cont, {:ok, [binary | acc]}}
+          :error -> {:halt, {:error, :invalid_payload}}
+        end
+      end)
+
+    case decoded do
+      {:ok, list} -> {:ok, Enum.reverse(list)}
+      error -> error
+    end
+  end
 
   defp object_key(doc_id, opts) do
     ensure_trailing_slash(Keyword.get(opts, :prefix, "documents/")) <> "#{doc_id}.json"

@@ -42,7 +42,7 @@ defmodule Markdoc.Storage.DiskAdapter do
     meta_path = meta_path(doc_id, opts)
 
     data_serialized = %{
-      "history" => Enum.map(payload.history, &:erlang.binary_to_list/1)
+      "history" => Enum.map(payload.history, &Base.encode64/1)
     }
 
     meta_serialized = %{
@@ -164,7 +164,18 @@ defmodule Markdoc.Storage.DiskAdapter do
   defp normalize_meta(_), do: {:error, :invalid_payload}
 
   defp normalize_history(%{"history" => history}) when is_list(history) do
-    {:ok, Enum.map(history, &:erlang.list_to_binary/1)}
+    decoded =
+      Enum.reduce_while(history, {:ok, []}, fn item, {:ok, acc} ->
+        case Base.decode64(item) do
+          {:ok, binary} -> {:cont, {:ok, [binary | acc]}}
+          :error -> {:halt, {:error, :invalid_payload}}
+        end
+      end)
+
+    case decoded do
+      {:ok, list} -> {:ok, Enum.reverse(list)}
+      error -> error
+    end
   end
 
   defp normalize_history(_), do: {:error, :invalid_payload}
