@@ -4,23 +4,23 @@
 
 /* Theme variables */
 :root[data-theme="light"] {
-  --code-block-bg: #f6f8fa;
+  --code-block-bg: #f8f9fa;
   --code-select-color: #24292f;
   --page-bg: #fafafa;
   --page-text: #333;
   --header-bg: #ffffff;
-  --header-border: #e0e0e0;
+  --header-border: #e5e7eb;
   --editor-bg: #ffffff;
-  --editor-border: #e0e0e0;
+  --editor-border: #e5e7eb;
   --block-selection-bg: #e3f2fd;
   --chat-bg: #ffffff;
-  --chat-border: #e0e0e0;
-  --chat-header-bg: #fafafa;
+  --chat-border: #e5e7eb;
+  --chat-header-bg: #f8f9fa;
   --chat-text: #1a1a1a;
-  --chat-text-secondary: #666;
-  --chat-text-tertiary: #999;
+  --chat-text-secondary: #6b7280;
+  --chat-text-tertiary: #9ca3af;
   --chat-btn-bg: #ffffff;
-  --chat-btn-hover: #f5f5f5;
+  --chat-btn-hover: #f3f4f6;
 }
 
 :root[data-theme="dark"] {
@@ -45,23 +45,23 @@
 
 /* Default to light theme */
 :root {
-  --code-block-bg: #f6f8fa;
+  --code-block-bg: #f8f9fa;
   --code-select-color: #24292f;
   --page-bg: #fafafa;
   --page-text: #333;
   --header-bg: #ffffff;
-  --header-border: #e0e0e0;
+  --header-border: #e5e7eb;
   --editor-bg: #ffffff;
-  --editor-border: #e0e0e0;
+  --editor-border: #e5e7eb;
   --block-selection-bg: #e3f2fd;
   --chat-bg: #ffffff;
-  --chat-border: #e0e0e0;
-  --chat-header-bg: #fafafa;
+  --chat-border: #e5e7eb;
+  --chat-header-bg: #f8f9fa;
   --chat-text: #1a1a1a;
-  --chat-text-secondary: #666;
-  --chat-text-tertiary: #999;
+  --chat-text-secondary: #6b7280;
+  --chat-text-tertiary: #9ca3af;
   --chat-btn-bg: #ffffff;
-  --chat-btn-hover: #f5f5f5;
+  --chat-btn-hover: #f3f4f6;
 }
 
 body {
@@ -84,9 +84,13 @@ body {
 /* Code block container background - uses CSS variables that change with theme */
 .bn-block-content[data-content-type="codeBlock"] {
   background-color: var(--code-block-bg) !important;
-  border-radius: 6px;
+  border-radius: 12px;
   padding: 12px;
-  transition: background-color 0.2s ease;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--chat-border);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 /* Code block content area */
@@ -109,12 +113,19 @@ body {
 /* Code block language selector styles */
 .bn-block-content[data-content-type="codeBlock"] > div[contenteditable="false"] > select {
   display: block;
-  color: var(--code-select-color);
+  color: var(--chat-text-secondary);
   background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .bn-block-content[data-content-type="codeBlock"] > div[contenteditable="false"] > select:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--chat-btn-hover);
+  border-color: var(--chat-border);
 }
 
 /* BlockNote menu icons - theme them for dark mode */

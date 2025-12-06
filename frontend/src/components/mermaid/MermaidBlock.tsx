@@ -202,14 +202,15 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
     <div
       style={{
         border: '1px solid var(--chat-border)',
-        borderRadius: '8px',
+        borderRadius: '12px',
         backgroundColor: 'var(--chat-bg)',
-        marginTop: '8px',
-        marginBottom: '8px',
+        marginTop: '12px',
+        marginBottom: '12px',
         overflow: 'hidden',
         width: `${width}px`,
         position: 'relative',
         transition: 'background-color 0.2s ease, border-color 0.2s ease',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
       }}
       contentEditable={false}
     >
@@ -219,7 +220,7 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '12px 16px',
+          padding: '10px 14px',
           borderBottom: '1px solid var(--chat-border)',
           backgroundColor: 'var(--chat-header-bg)',
           transition: 'background-color 0.2s ease, border-color 0.2s ease',
@@ -342,7 +343,7 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
             <div
               contentEditable={false}
               style={{
-                padding: '16px',
+                padding: '12px',
                 backgroundColor: 'var(--chat-bg)',
               }}
             >
@@ -415,7 +416,7 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
       {isMinimized && (
         <div
           style={{
-            padding: '12px 16px',
+            padding: '10px 14px',
             color: 'var(--chat-text-tertiary)',
             fontSize: '13px',
             fontStyle: 'italic',
@@ -429,7 +430,7 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
       {!isMinimized && !isInitialized && (
         <div
           style={{
-            padding: '32px',
+            padding: '24px',
             color: 'var(--chat-text-tertiary)',
             fontSize: '13px',
             textAlign: 'center',

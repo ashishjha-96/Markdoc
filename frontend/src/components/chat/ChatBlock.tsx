@@ -374,23 +374,24 @@ export function ChatBlock({ block }: ChatBlockProps) {
         top: `${floatingPosition.y}px`,
         zIndex: floatingZIndex,
         border: "1px solid var(--chat-border)",
-        borderRadius: "8px",
+        borderRadius: "12px",
         backgroundColor: "var(--chat-bg)",
         overflow: "hidden",
         width: `${width}px`,
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+        boxShadow: "0 4px 24px rgba(0, 0, 0, 0.08)",
         transition: "background-color 0.2s ease, border-color 0.2s ease",
       }
     : {
         border: "1px solid var(--chat-border)",
-        borderRadius: "8px",
+        borderRadius: "12px",
         backgroundColor: "var(--chat-bg)",
-        marginTop: "8px",
-        marginBottom: "8px",
+        marginTop: "12px",
+        marginBottom: "12px",
         overflow: "hidden",
         width: `${width}px`,
         position: "relative",
         transition: "background-color 0.2s ease, border-color 0.2s ease",
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
       };
 
   return (
@@ -406,7 +407,7 @@ export function ChatBlock({ block }: ChatBlockProps) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "12px 16px",
+            padding: "10px 14px",
             borderBottom: "1px solid var(--chat-border)",
             backgroundColor: "var(--chat-header-bg)",
             cursor: isFloating && !isEditingTitle ? "move" : "default",
@@ -651,7 +652,7 @@ export function ChatBlock({ block }: ChatBlockProps) {
         return (
           <div
             style={{
-              padding: "12px 16px",
+              padding: "10px 14px",
               color: "var(--chat-text-tertiary)",
               fontSize: "13px",
               fontStyle: "italic",
@@ -686,11 +687,11 @@ export function ChatBlock({ block }: ChatBlockProps) {
         <div
           style={{
             border: "1px dashed var(--chat-border)",
-            borderRadius: "8px",
+            borderRadius: "12px",
             backgroundColor: "var(--chat-header-bg)",
-            marginTop: "8px",
-            marginBottom: "8px",
-            padding: "16px",
+            marginTop: "12px",
+            marginBottom: "12px",
+            padding: "10px 14px",
             color: "var(--chat-text-tertiary)",
             fontSize: "13px",
             fontStyle: "italic",
