@@ -15,6 +15,8 @@ defmodule Markdoc.Application do
       Markdoc.DocRegistry,
       # Document Supervisor for dynamic doc processes
       Markdoc.DocSupervisor,
+      # Retention cleanup worker
+      Markdoc.Storage.CleanupWorker,
       # Presence tracking for collaborative features
       MarkdocWeb.Presence,
       # System monitoring and stats logging

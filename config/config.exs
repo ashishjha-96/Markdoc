@@ -50,6 +50,16 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Storage configuration (defaults, override in runtime.exs as needed)
+config :markdoc, :storage,
+  backend: :none,
+  disk_path: Path.expand("../storage/documents", __DIR__),
+  flush_interval_ms: 30_000,
+  idle_flush_ms: 300_000,
+  retention_hours: 24,
+  cleanup_interval_ms: 900_000,
+  s3_prefix: "documents/"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

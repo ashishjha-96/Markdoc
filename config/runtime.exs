@@ -87,3 +87,63 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 end
+
+base_storage_config = Application.get_env(:markdoc, :storage, [])
+
+env_int = fn name, default ->
+  case System.get_env(name) do
+    nil -> default
+    val -> String.to_integer(val)
+  end
+end
+
+env_backend =
+  case System.get_env("MARKDOC_STORAGE_BACKEND") do
+    "s3" -> :s3
+    "disk" -> :disk
+    "none" -> :none
+    _ -> Keyword.get(base_storage_config, :backend, :none)
+  end
+
+config :markdoc, :storage,
+  backend: env_backend,
+  disk_path: System.get_env("MARKDOC_STORAGE_PATH") || Keyword.get(base_storage_config, :disk_path),
+  s3_bucket: System.get_env("MARKDOC_S3_BUCKET") || Keyword.get(base_storage_config, :s3_bucket),
+  s3_prefix: System.get_env("MARKDOC_S3_PREFIX") || Keyword.get(base_storage_config, :s3_prefix, "documents/"),
+  flush_interval_ms:
+    env_int.("MARKDOC_FLUSH_INTERVAL_MS", Keyword.get(base_storage_config, :flush_interval_ms, 30_000)),
+  idle_flush_ms:
+    env_int.("MARKDOC_IDLE_FLUSH_MS", Keyword.get(base_storage_config, :idle_flush_ms, 300_000)),
+  retention_hours:
+    env_int.("MARKDOC_RETENTION_HOURS", Keyword.get(base_storage_config, :retention_hours, 24)),
+  cleanup_interval_ms:
+    env_int.("MARKDOC_CLEANUP_INTERVAL_MS", Keyword.get(base_storage_config, :cleanup_interval_ms, 900_000))
+
+# ExAws (S3) runtime configuration for AWS or S3-compatible endpoints
+exaws_region = System.get_env("MARKDOC_S3_REGION") || System.get_env("AWS_REGION") || System.get_env("AWS_DEFAULT_REGION")
+exaws_access_key = System.get_env("MARKDOC_S3_ACCESS_KEY_ID") || System.get_env("AWS_ACCESS_KEY_ID")
+exaws_secret = System.get_env("MARKDOC_S3_SECRET_ACCESS_KEY") || System.get_env("AWS_SECRET_ACCESS_KEY")
+exaws_host = System.get_env("MARKDOC_S3_HOST")
+exaws_scheme = System.get_env("MARKDOC_S3_SCHEME") || "https://"
+exaws_port = System.get_env("MARKDOC_S3_PORT")
+
+if env_backend == :s3 do
+  maybe_put_env = fn
+    opts, _key, nil -> opts
+    opts, key, val -> Keyword.put(opts, key, val)
+  end
+
+  config :ex_aws,
+    region: exaws_region,
+    access_key_id: exaws_access_key || :instance_role,
+    secret_access_key: exaws_secret || :instance_role
+
+  s3_opts =
+    []
+    |> maybe_put_env.(:scheme, exaws_scheme)
+    |> maybe_put_env.(:host, exaws_host)
+    |> maybe_put_env.(:port, (exaws_port && String.to_integer(exaws_port)) || nil)
+    |> maybe_put_env.(:region, exaws_region)
+
+  config :ex_aws, :s3, s3_opts
+end

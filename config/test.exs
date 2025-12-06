@@ -16,3 +16,12 @@ config :phoenix, :plug_init_mode, :runtime
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
+
+# Test storage uses local disk with fast flush/cleanup intervals
+config :markdoc, :storage,
+  backend: :disk,
+  disk_path: Path.expand("../tmp/storage_test", __DIR__),
+  flush_interval_ms: 20,
+  idle_flush_ms: 40,
+  retention_hours: 1,
+  cleanup_interval_ms: 100

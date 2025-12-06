@@ -25,14 +25,34 @@ defmodule Markdoc.DocServer do
   # State structure
   defmodule State do
     @moduledoc false
-    defstruct [:doc_id, :history, :users, :update_count, :cleanup_timer]
+    defstruct [
+      :doc_id,
+      :history,
+      :users,
+      :update_count,
+      :cleanup_timer,
+      :created_at,
+      :last_updated_at,
+      :last_flushed_at,
+      :dirty?,
+      :periodic_flush_timer,
+      :idle_flush_timer,
+      :storage_backend
+    ]
 
     @type t :: %__MODULE__{
             doc_id: String.t(),
             history: [binary()],
             users: MapSet.t(pid()),
             update_count: non_neg_integer(),
-            cleanup_timer: reference() | nil
+            cleanup_timer: reference() | nil,
+            created_at: non_neg_integer(),
+            last_updated_at: non_neg_integer(),
+            last_flushed_at: non_neg_integer() | nil,
+            dirty?: boolean(),
+            periodic_flush_timer: reference() | nil,
+            idle_flush_timer: reference() | nil,
+            storage_backend: atom()
           }
   end
 
@@ -87,16 +107,50 @@ defmodule Markdoc.DocServer do
     Logger.metadata(doc_id: doc_id)
     Logger.info("Document spawned", event: :spawn, doc_id: doc_id)
 
+    now = System.system_time(:second)
+    storage_backend = Markdoc.Storage.backend()
+
+    {history, created_at, last_updated_at} =
+      case Markdoc.Storage.load(doc_id) do
+        {:ok, payload} ->
+          Logger.info("Loaded document from storage",
+            event: :storage_load,
+            doc_id: doc_id,
+            backend: storage_backend
+          )
+
+          {payload.history, payload.created_at, payload.last_updated_at}
+
+        :not_found ->
+          {[], now, now}
+
+        {:error, reason} ->
+          Logger.warning("Failed to load document from storage",
+            event: :storage_load_failed,
+            doc_id: doc_id,
+            reason: inspect(reason)
+          )
+
+          {[], now, now}
+      end
+
     # Schedule periodic inactivity check
     Process.send_after(self(), :check_inactivity, @cleanup_timeout)
 
     {:ok,
      %State{
        doc_id: doc_id,
-       history: [],
+       history: history,
        users: MapSet.new(),
        update_count: 0,
-       cleanup_timer: nil
+       cleanup_timer: nil,
+       created_at: created_at,
+       last_updated_at: last_updated_at,
+       last_flushed_at: nil,
+       dirty?: false,
+       periodic_flush_timer: schedule_periodic_flush(),
+       idle_flush_timer: nil,
+       storage_backend: storage_backend
      }}
   end
 
@@ -148,6 +202,9 @@ defmodule Markdoc.DocServer do
   def handle_cast({:add_update, binary}, state) do
     new_history = [binary | state.history]
     new_count = state.update_count + 1
+    now = System.system_time(:second)
+
+    idle_flush_timer = reschedule_idle_flush(state.idle_flush_timer)
 
     Logger.debug("Document received update",
       event: :update_received,
@@ -165,9 +222,24 @@ defmodule Markdoc.DocServer do
         )
 
         trigger_snapshot_request(state.users, state.doc_id)
-        %{state | history: new_history, update_count: 0}
+
+        %{
+          state
+          | history: new_history,
+            update_count: 0,
+            dirty?: true,
+            last_updated_at: now,
+            idle_flush_timer: idle_flush_timer
+        }
       else
-        %{state | history: new_history, update_count: new_count}
+        %{
+          state
+          | history: new_history,
+            update_count: new_count,
+            dirty?: true,
+            last_updated_at: now,
+            idle_flush_timer: idle_flush_timer
+        }
       end
 
     {:noreply, new_state}
@@ -176,6 +248,9 @@ defmodule Markdoc.DocServer do
   @impl true
   def handle_cast({:save_snapshot, snapshot_binary}, state) do
     old_count = length(state.history)
+    now = System.system_time(:second)
+    idle_flush_timer = reschedule_idle_flush(state.idle_flush_timer)
+
     Logger.info("Snapshot saved",
       event: :snapshot_saved,
       old_update_count: old_count,
@@ -183,7 +258,15 @@ defmodule Markdoc.DocServer do
     )
 
     # Replace entire history with single snapshot blob
-    {:noreply, %{state | history: [snapshot_binary], update_count: 0}}
+    {:noreply,
+     %{
+       state
+       | history: [snapshot_binary],
+         update_count: 0,
+         dirty?: true,
+         last_updated_at: now,
+         idle_flush_timer: idle_flush_timer
+     }}
   end
 
   @impl true
@@ -217,6 +300,18 @@ defmodule Markdoc.DocServer do
   end
 
   @impl true
+  def handle_info(:periodic_flush, state) do
+    new_state = maybe_flush(state, :periodic)
+    {:noreply, %{new_state | periodic_flush_timer: schedule_periodic_flush()}}
+  end
+
+  @impl true
+  def handle_info(:idle_flush, state) do
+    new_state = maybe_flush(state, :idle)
+    {:noreply, %{new_state | idle_flush_timer: nil}}
+  end
+
+  @impl true
   def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
     # A monitored channel process died
     new_users = MapSet.delete(state.users, pid)
@@ -244,15 +339,66 @@ defmodule Markdoc.DocServer do
   end
 
   @impl true
-  def terminate(reason, _state) do
+  def terminate(reason, state) do
+    maybe_flush(state, :terminate)
+
     Logger.info("Document terminated",
       event: :terminate,
       reason: inspect(reason)
     )
+
     :ok
   end
 
   ## Private Functions
+
+  defp maybe_flush(state, reason) do
+    if state.dirty? do
+      payload = %{
+        doc_id: state.doc_id,
+        created_at: state.created_at,
+        last_updated_at: state.last_updated_at,
+        history: state.history,
+        version: 1
+      }
+
+      case Markdoc.Storage.persist(payload) do
+        :ok ->
+          Logger.info("Flushed document to storage",
+            event: :storage_flush,
+            doc_id: state.doc_id,
+            reason: reason,
+            history_size: length(state.history)
+          )
+
+          %{state | dirty?: false, last_flushed_at: System.system_time(:second)}
+
+        {:error, flush_reason} ->
+          Logger.warning("Failed to flush document to storage",
+            event: :storage_flush_failed,
+            doc_id: state.doc_id,
+            reason: inspect(flush_reason)
+          )
+
+          state
+      end
+    else
+      state
+    end
+  end
+
+  defp schedule_periodic_flush do
+    Process.send_after(self(), :periodic_flush, Markdoc.Storage.flush_interval_ms())
+  end
+
+  defp reschedule_idle_flush(nil) do
+    Process.send_after(self(), :idle_flush, Markdoc.Storage.idle_flush_ms())
+  end
+
+  defp reschedule_idle_flush(timer_ref) do
+    Process.cancel_timer(timer_ref)
+    Process.send_after(self(), :idle_flush, Markdoc.Storage.idle_flush_ms())
+  end
 
   defp trigger_snapshot_request(users, doc_id) do
     case users |> MapSet.to_list() |> Enum.take_random(1) do
