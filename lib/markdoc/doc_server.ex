@@ -174,7 +174,7 @@ defmodule Markdoc.DocServer do
   @impl true
   def handle_cast({:leave, channel_pid}, state) do
     new_users = MapSet.delete(state.users, channel_pid)
-    new_state = %{state | users: new_users}
+    base_state = %{state | users: new_users, idle_flush_timer: cancel_timer(state.idle_flush_timer)}
 
     Logger.debug("User left document",
       event: :user_left,
@@ -185,14 +185,17 @@ defmodule Markdoc.DocServer do
     # Start cleanup timer if no users remain
     new_state =
       if MapSet.size(new_users) == 0 do
+        flushed_state = maybe_flush(base_state, :idle_flush)
         timer_ref = Process.send_after(self(), :cleanup_timeout, @cleanup_timeout)
+
         Logger.info("Document is now idle",
           event: :document_idle,
           cleanup_timeout_ms: @cleanup_timeout
         )
-        %{new_state | cleanup_timer: timer_ref}
+
+        %{flushed_state | cleanup_timer: timer_ref}
       else
-        new_state
+        base_state
       end
 
     {:noreply, new_state}
@@ -325,12 +328,16 @@ defmodule Markdoc.DocServer do
     # Start cleanup timer if no users remain
     new_state =
       if MapSet.size(new_users) == 0 do
+        base_state = %{state | users: new_users, idle_flush_timer: cancel_timer(state.idle_flush_timer)}
+        flushed_state = maybe_flush(base_state, :idle_flush)
         timer_ref = Process.send_after(self(), :cleanup_timeout, @cleanup_timeout)
+
         Logger.info("Document is now idle",
           event: :document_idle,
           cleanup_timeout_ms: @cleanup_timeout
         )
-        %{state | users: new_users, cleanup_timer: timer_ref}
+
+        %{flushed_state | cleanup_timer: timer_ref}
       else
         %{state | users: new_users}
       end
@@ -398,6 +405,12 @@ defmodule Markdoc.DocServer do
   defp reschedule_idle_flush(timer_ref) do
     Process.cancel_timer(timer_ref)
     Process.send_after(self(), :idle_flush, Markdoc.Storage.idle_flush_ms())
+  end
+
+  defp cancel_timer(nil), do: nil
+  defp cancel_timer(ref) do
+    Process.cancel_timer(ref)
+    nil
   end
 
   defp trigger_snapshot_request(users, doc_id) do
