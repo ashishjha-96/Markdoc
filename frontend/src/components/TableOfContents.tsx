@@ -13,7 +13,7 @@ export function TableOfContents({ editor }: TableOfContentsProps) {
   const [userHidden, setUserHidden] = useState(false);
   const [isResponsiveHidden, setIsResponsiveHidden] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimeoutRef = useRef<number | null>(null);
 
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {

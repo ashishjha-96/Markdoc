@@ -62,7 +62,7 @@ function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): T & { cancel?: () => void } {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: number | null = null;
 
   const debounced = (...args: Parameters<T>) => {
     if (timeout) clearTimeout(timeout);
