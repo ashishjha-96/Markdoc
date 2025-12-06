@@ -20,6 +20,8 @@ import {
   saveFloatingState,
   clearFloatingState,
   getDefaultFloatingPosition,
+  loadMinimizedState,
+  saveMinimizedState,
 } from "../../lib/floatingChats";
 
 // Context for sharing editor-level data with chat blocks
@@ -42,7 +44,6 @@ interface ChatBlockProps {
     props: {
       chatId: string;
       title: string;
-      minimized: boolean;
       height: number;
       width: number;
     };
@@ -52,7 +53,10 @@ interface ChatBlockProps {
 export function ChatBlock({ block }: ChatBlockProps) {
   const context = useContext(EditorContext);
   const editor = useBlockNoteEditor();
-  const [isMinimized, setIsMinimized] = useState(block.props.minimized);
+  const chatId = block.props.chatId;
+  
+  // Load minimized state from localStorage (local to each user)
+  const [isMinimized, setIsMinimized] = useState(() => loadMinimizedState(chatId));
   const [height, setHeight] = useState(block.props.height || 400);
   const [width, setWidth] = useState(block.props.width || 600);
   const [isResizing, setIsResizing] = useState(false);
@@ -89,7 +93,6 @@ export function ChatBlock({ block }: ChatBlockProps) {
   }
 
   const { doc, channel, userId, userName, userColor, presenceUsers } = context;
-  const chatId = block.props.chatId;
 
   // Use all chat hooks
   const { messages, sendMessage, addReaction } = useChat(
@@ -123,11 +126,6 @@ export function ChatBlock({ block }: ChatBlockProps) {
       setFloatingZIndex(savedState.zIndex || 2000);
     }
   }, [chatId]);
-
-  // Sync minimized state from block props
-  useEffect(() => {
-    setIsMinimized(block.props.minimized);
-  }, [block.props.minimized]);
 
   // Toggle floating handler
   const handleToggleFloating = useCallback(() => {
@@ -524,12 +522,8 @@ export function ChatBlock({ block }: ChatBlockProps) {
               const newMinimizedState = !isMinimized;
               setIsMinimized(newMinimizedState);
 
-              // Persist minimized state to block props
-              if (editor) {
-                editor.updateBlock(block.id, {
-                  props: { ...block.props, minimized: newMinimizedState },
-                });
-              }
+              // Persist minimized state to localStorage (local, not synced)
+              saveMinimizedState(chatId, newMinimizedState);
             }}
             style={{
               width: "24px",

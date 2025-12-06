@@ -62,7 +62,6 @@ const insertChatBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
         props: {
           chatId: nanoid(),
           title: "Chat Discussion",
-          minimized: false,
           height: 400,
           width: 600,
         }
@@ -88,7 +87,6 @@ const insertMermaidBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
         props: {
           diagramId: nanoid(),
           title: "Mermaid Diagram",
-          minimized: false,
           height: 400,
           width: 600,
         }

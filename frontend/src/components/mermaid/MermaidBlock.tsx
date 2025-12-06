@@ -15,6 +15,7 @@ import { useBlockNoteEditor } from '@blocknote/react';
 import { useMermaid } from '../../hooks/useMermaid';
 import { MermaidCanvas } from './MermaidCanvas';
 import { MermaidCodeEditor } from './MermaidCodeEditor';
+import { loadMinimizedState, saveMinimizedState } from '../../lib/floatingChats';
 
 interface MermaidBlockProps {
   block: {
@@ -23,7 +24,6 @@ interface MermaidBlockProps {
     props: {
       diagramId: string;
       title: string;
-      minimized: boolean;
       height: number;
       width: number;
     };
@@ -33,8 +33,10 @@ interface MermaidBlockProps {
 export function MermaidBlock({ block }: MermaidBlockProps) {
   const context = useContext(EditorContext);
   const editor = useBlockNoteEditor();
+  const diagramId = block.props.diagramId;
 
-  const [isMinimized, setIsMinimized] = useState(block.props.minimized);
+  // Load minimized state from localStorage (local to each user)
+  const [isMinimized, setIsMinimized] = useState(() => loadMinimizedState(diagramId));
   const [isEditMode, setIsEditMode] = useState(true); // Start in edit mode for new blocks
   const [height, setHeight] = useState(block.props.height || 400);
   const [width, setWidth] = useState(block.props.width || 600);
@@ -65,7 +67,6 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
   }
 
   const { doc } = context;
-  const diagramId = block.props.diagramId;
 
   const { yCode, isInitialized } = useMermaid(doc, diagramId);
 
@@ -90,11 +91,6 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
       yCode.unobserve(updateLocalCode);
     };
   }, [yCode]);
-
-  // Sync minimized state from block props
-  useEffect(() => {
-    setIsMinimized(block.props.minimized);
-  }, [block.props.minimized]);
 
 
   // Prevent BlockNote from handling keyboard events in the textarea
@@ -316,12 +312,8 @@ export function MermaidBlock({ block }: MermaidBlockProps) {
               const newMinimizedState = !isMinimized;
               setIsMinimized(newMinimizedState);
 
-              // Persist minimized state to block props
-              if (editor) {
-                editor.updateBlock(block.id, {
-                  props: { ...block.props, minimized: newMinimizedState },
-                });
-              }
+              // Persist minimized state to localStorage (local, not synced)
+              saveMinimizedState(diagramId, newMinimizedState);
             }}
             style={{
               width: '24px',

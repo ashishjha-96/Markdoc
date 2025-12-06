@@ -3,6 +3,7 @@
  *
  * Utilities for persisting floating chat window state in localStorage.
  * Handles position validation, off-screen detection, and state persistence.
+ * Also stores minimized state per-user (local, not synced).
  */
 
 export interface FloatingChatState {
@@ -12,9 +13,11 @@ export interface FloatingChatState {
   width: number;
   height: number;
   zIndex?: number;
+  isMinimized?: boolean; // Local minimized state (not synced)
 }
 
 const STORAGE_KEY = "markdoc-floating-chats";
+const MINIMIZED_STORAGE_KEY = "markdoc-minimized-blocks";
 
 /**
  * Load floating state for a specific chat from localStorage
@@ -92,4 +95,58 @@ export function getDefaultFloatingPosition(width: number, height: number): { x: 
     x: Math.max(0, (window.innerWidth - width) / 2),
     y: Math.max(0, (window.innerHeight - height) / 2),
   };
+}
+
+/**
+ * Load minimized state for a specific block from localStorage
+ * This is stored separately and locally per-user (not synced)
+ */
+export function loadMinimizedState(blockId: string): boolean {
+  try {
+    const stored = localStorage.getItem(MINIMIZED_STORAGE_KEY);
+    if (!stored) return false;
+
+    const allStates: Record<string, boolean> = JSON.parse(stored);
+    return allStates[blockId] || false;
+  } catch (error) {
+    console.error("Error loading minimized state:", error);
+    return false;
+  }
+}
+
+/**
+ * Save minimized state for a specific block to localStorage
+ * This is stored separately and locally per-user (not synced)
+ */
+export function saveMinimizedState(blockId: string, isMinimized: boolean): void {
+  try {
+    const stored = localStorage.getItem(MINIMIZED_STORAGE_KEY);
+    const allStates: Record<string, boolean> = stored ? JSON.parse(stored) : {};
+
+    if (isMinimized) {
+      allStates[blockId] = true;
+    } else {
+      delete allStates[blockId]; // Remove entry when expanded
+    }
+
+    localStorage.setItem(MINIMIZED_STORAGE_KEY, JSON.stringify(allStates));
+  } catch (error) {
+    console.error("Error saving minimized state:", error);
+  }
+}
+
+/**
+ * Clear minimized state for a specific block from localStorage
+ */
+export function clearMinimizedState(blockId: string): void {
+  try {
+    const stored = localStorage.getItem(MINIMIZED_STORAGE_KEY);
+    if (!stored) return;
+
+    const allStates: Record<string, boolean> = JSON.parse(stored);
+    delete allStates[blockId];
+    localStorage.setItem(MINIMIZED_STORAGE_KEY, JSON.stringify(allStates));
+  } catch (error) {
+    console.error("Error clearing minimized state:", error);
+  }
 }
