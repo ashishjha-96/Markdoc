@@ -31,7 +31,9 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useCursors } from "../hooks/useCursors";
 import { usePresence } from "../hooks/usePresence";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useCodeBlockAutoDetect } from "../hooks/useCodeBlockAutoDetect";
 import { generateDocId } from "../lib/generateDocId";
+import { requestImport, onImportMarkdown } from "../lib/importBridge";
 import { EditorContext } from "./chat/ChatBlock";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -195,6 +197,9 @@ export function Editor({ docId }: EditorProps) {
   // Enable custom keyboard shortcuts
   useKeyboardShortcuts(editor);
 
+  // Enable auto-detection of code block languages
+  useCodeBlockAutoDetect(editor);
+
   // Initialize Phoenix provider only after we have user info
   useEffect(() => {
     if (!userInfo) return;
@@ -281,6 +286,48 @@ export function Editor({ docId }: EditorProps) {
       provider.updateCursor({ blockId: "", offset: 0 });
     };
   }, [provider, editor]);
+
+  // Handle import from Chrome extension
+  useEffect(() => {
+    if (!editor || !provider) return;
+
+    // Check if this is an import request
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldImport = urlParams.get('import') === 'true';
+
+    if (!shouldImport) return;
+
+    console.log('📥 Checking for import data...');
+
+    // Request import data from extension
+    requestImport(docId);
+
+    // Listen for markdown response
+    const cleanup = onImportMarkdown(docId, async (markdown, sourceUrl, sourceTitle) => {
+      console.log('✓ Received markdown from extension:', {
+        length: markdown.length,
+        sourceUrl,
+        sourceTitle,
+      });
+
+      try {
+        // Convert markdown to BlockNote blocks
+        const blocks = await editor.tryParseMarkdownToBlocks(markdown);
+        
+        // Replace the default empty paragraph with imported content
+        editor.replaceBlocks(editor.document, blocks);
+        
+        console.log('✓ Successfully imported content');
+        
+        // Clean up URL parameter
+        window.history.replaceState({}, '', `/${docId}`);
+      } catch (error) {
+        console.error('Failed to import markdown:', error);
+      }
+    });
+
+    return cleanup;
+  }, [editor, provider, docId]);
 
   // Clean up orphaned chats (deleted blocks)
   useEffect(() => {
