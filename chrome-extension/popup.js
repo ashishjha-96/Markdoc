@@ -1,4 +1,14 @@
 // Popup script for Import to Markdown extension
+'use strict';
+
+// Simple logger with levels
+const Logger = {
+  PREFIX: '[Import-MD]',
+  debug: (...args) => console.debug(Logger.PREFIX, ...args),
+  info: (...args) => console.info(Logger.PREFIX, ...args),
+  warn: (...args) => console.warn(Logger.PREFIX, ...args),
+  error: (...args) => console.error(Logger.PREFIX, ...args),
+};
 
 // Generate a simple doc ID (similar to nanoid)
 function generateDocId() {
@@ -15,7 +25,7 @@ function showStatus(message, type = 'success') {
   const status = document.getElementById('status');
   status.textContent = message;
   status.className = `status show ${type}`;
-  
+
   setTimeout(() => {
     status.classList.remove('show');
   }, 3000);
@@ -61,13 +71,20 @@ document.getElementById('copyBtn').addEventListener('click', async () => {
   button.innerHTML = '<span class="loading"></span>Copying...';
 
   try {
+    Logger.info('Copy button clicked, querying active tab...');
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
+
+    if (!tab) {
+      throw new Error('No active tab found');
+    }
+    Logger.debug('Active tab:', tab.url);
+
     const options = {
       includeImages: document.getElementById('includeImages').checked,
       includeLinks: document.getElementById('includeLinks').checked,
       includeMetadata: document.getElementById('includeMetadata').checked,
     };
+    Logger.debug('Extraction options:', options);
 
     const [result] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -77,12 +94,13 @@ document.getElementById('copyBtn').addEventListener('click', async () => {
 
     if (result && result.result) {
       await navigator.clipboard.writeText(result.result);
+      Logger.info('Content copied to clipboard successfully');
       showStatus('✓ Copied to clipboard!', 'success');
     } else {
-      throw new Error('Failed to extract content');
+      throw new Error('Failed to extract content - empty result');
     }
   } catch (error) {
-    console.error('Error:', error);
+    Logger.error('Copy failed:', error.message, error.stack);
     showStatus('✗ Failed to copy content', 'error');
   } finally {
     button.disabled = false;
@@ -97,18 +115,25 @@ document.getElementById('importBtn').addEventListener('click', async () => {
   button.innerHTML = '<span class="loading"></span>Importing...';
 
   try {
+    Logger.info('Import button clicked, querying active tab...');
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const markdocUrl = document.getElementById('markdocUrl').value.trim();
-    
+
     if (!markdocUrl) {
       throw new Error('Please enter a Markdoc URL');
     }
+
+    if (!tab) {
+      throw new Error('No active tab found');
+    }
+    Logger.debug('Active tab:', tab.url, 'Target Markdoc URL:', markdocUrl);
 
     const options = {
       includeImages: document.getElementById('includeImages').checked,
       includeLinks: document.getElementById('includeLinks').checked,
       includeMetadata: document.getElementById('includeMetadata').checked,
     };
+    Logger.debug('Extraction options:', options);
 
     const [result] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -119,7 +144,8 @@ document.getElementById('importBtn').addEventListener('click', async () => {
     if (result && result.result) {
       const docId = generateDocId();
       const markdown = result.result;
-      
+      Logger.info('Content extracted, doc ID:', docId, 'Length:', markdown.length);
+
       // Store markdown temporarily with a timestamp
       const importData = {
         markdown,
@@ -127,23 +153,25 @@ document.getElementById('importBtn').addEventListener('click', async () => {
         sourceUrl: tab.url,
         sourceTitle: tab.title,
       };
-      
+
       // Store in chrome.storage (accessible across origins)
       await chrome.storage.local.set({ [`import_${docId}`]: importData });
-      
+      Logger.debug('Import data stored in chrome.storage.local');
+
       // Open new tab with the markdoc URL
       const docUrl = `${markdocUrl}/${docId}?import=true`;
       await chrome.tabs.create({ url: docUrl });
-      
+      Logger.info('Opened new tab:', docUrl);
+
       showStatus('✓ Opened in Markdoc!', 'success');
-      
+
       // Close popup after a short delay
       setTimeout(() => window.close(), 1000);
     } else {
-      throw new Error('Failed to extract content');
+      throw new Error('Failed to extract content - empty result');
     }
   } catch (error) {
-    console.error('Error:', error);
+    Logger.error('Import failed:', error.message, error.stack);
     showStatus(`✗ ${error.message}`, 'error');
   } finally {
     button.disabled = false;
@@ -156,7 +184,7 @@ function extractContent(options) {
   // Helper to convert HTML to Markdown
   function htmlToMarkdown(html, opts) {
     let markdown = '';
-    
+
     // Detect if this is a code file page on any platform
     const isCodeFile = detectCodeFilePage();
     if (isCodeFile) {
@@ -166,7 +194,7 @@ function extractContent(options) {
       }
       // If code extraction failed, continue with regular extraction
     }
-    
+
     // Get main content (try various selectors for article content)
     const selectors = [
       'article',
@@ -178,44 +206,44 @@ function extractContent(options) {
       '#content',
       'body',
     ];
-    
+
     let mainContent = null;
     for (const selector of selectors) {
       mainContent = document.querySelector(selector);
       if (mainContent) break;
     }
-    
+
     if (!mainContent) {
       mainContent = document.body;
     }
-    
+
     // Clone to avoid modifying the actual page
     const content = mainContent.cloneNode(true);
-    
+
     // Remove unwanted elements
     const unwantedSelectors = [
-      'script', 'style', 'nav', 'header', 'footer', 
+      'script', 'style', 'nav', 'header', 'footer',
       'aside', '.sidebar', '.advertisement', '.ads',
       '.comments', '.related-posts', 'iframe'
     ];
     unwantedSelectors.forEach(selector => {
       content.querySelectorAll(selector).forEach(el => el.remove());
     });
-    
+
     // Convert to markdown
     function processNode(node, depth = 0) {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent.trim();
         return text ? text + ' ' : '';
       }
-      
+
       if (node.nodeType !== Node.ELEMENT_NODE) {
         return '';
       }
-      
+
       const tag = node.tagName.toLowerCase();
       let result = '';
-      
+
       switch (tag) {
         case 'h1':
           result = '\n# ' + node.textContent.trim() + '\n\n';
@@ -282,11 +310,14 @@ function extractContent(options) {
           break;
         case 'ul':
         case 'ol':
-          result = '\n' + Array.from(node.children).map((li, i) => {
-            const bullet = tag === 'ul' ? '-' : `${i + 1}.`;
-            const text = Array.from(li.childNodes).map(child => processNode(child, depth + 1)).join('').trim();
-            return `${bullet} ${text}`;
-          }).join('\n') + '\n\n';
+          result = '\n' + processListItems(node, tag === 'ol', depth) + '\n';
+          break;
+        case 'li':
+          // Handled by processListItems, but if encountered standalone
+          result = Array.from(node.childNodes).map(child => processNode(child, depth)).join('');
+          break;
+        case 'table':
+          result = '\n' + processTable(node) + '\n';
           break;
         case 'blockquote':
           const quote = Array.from(node.childNodes).map(child => processNode(child, depth)).join('').trim();
@@ -298,39 +329,133 @@ function extractContent(options) {
         default:
           result = Array.from(node.childNodes).map(child => processNode(child, depth)).join('');
       }
-      
+
       return result;
     }
-    
+
+    // Process nested list items with proper indentation
+    function processListItems(listNode, isOrdered, baseDepth) {
+      const items = [];
+      const indent = '  '.repeat(baseDepth);
+
+      Array.from(listNode.children).forEach((item, index) => {
+        if (item.tagName.toLowerCase() !== 'li') return;
+
+        const bullet = isOrdered ? `${index + 1}.` : '-';
+        let itemContent = '';
+        let nestedLists = [];
+
+        // Process child nodes, separating text from nested lists
+        Array.from(item.childNodes).forEach(child => {
+          if (child.nodeType === Node.ELEMENT_NODE) {
+            const childTag = child.tagName.toLowerCase();
+            if (childTag === 'ul' || childTag === 'ol') {
+              // Process nested list recursively
+              nestedLists.push(processListItems(child, childTag === 'ol', baseDepth + 1));
+            } else {
+              itemContent += processNode(child, baseDepth + 1);
+            }
+          } else if (child.nodeType === Node.TEXT_NODE) {
+            itemContent += child.textContent;
+          }
+        });
+
+        // Clean up item content
+        itemContent = itemContent.trim().replace(/\n+/g, ' ');
+        items.push(`${indent}${bullet} ${itemContent}`);
+
+        // Add nested lists after this item
+        nestedLists.forEach(nested => {
+          items.push(nested);
+        });
+      });
+
+      return items.join('\n');
+    }
+
+    // Convert HTML table to Markdown table
+    function processTable(tableNode) {
+      const rows = [];
+      const headerRow = [];
+      const bodyRows = [];
+
+      // Process thead if present
+      const thead = tableNode.querySelector('thead');
+      if (thead) {
+        const headerCells = thead.querySelectorAll('th, td');
+        headerCells.forEach(cell => {
+          headerRow.push(cell.textContent.trim().replace(/\|/g, '\\|'));
+        });
+      }
+
+      // Process tbody rows
+      const tbody = tableNode.querySelector('tbody') || tableNode;
+      const trs = tbody.querySelectorAll('tr');
+
+      trs.forEach((tr, rowIndex) => {
+        const cells = tr.querySelectorAll('th, td');
+        const rowData = [];
+
+        cells.forEach(cell => {
+          rowData.push(cell.textContent.trim().replace(/\|/g, '\\|'));
+        });
+
+        // If no thead, treat first row as header
+        if (!thead && rowIndex === 0 && headerRow.length === 0) {
+          headerRow.push(...rowData);
+        } else if (rowData.length > 0) {
+          bodyRows.push(rowData);
+        }
+      });
+
+      // Build markdown table
+      if (headerRow.length === 0) {
+        return ''; // No valid table structure
+      }
+
+      let markdown = '| ' + headerRow.join(' | ') + ' |\n';
+      markdown += '| ' + headerRow.map(() => '---').join(' | ') + ' |\n';
+
+      bodyRows.forEach(row => {
+        // Pad row to match header length
+        while (row.length < headerRow.length) {
+          row.push('');
+        }
+        markdown += '| ' + row.join(' | ') + ' |\n';
+      });
+
+      return markdown;
+    }
+
     markdown = processNode(content);
-    
+
     // Add metadata if requested
     if (opts.includeMetadata) {
       const title = document.title || 'Untitled';
       const url = window.location.href;
       const date = new Date().toISOString().split('T')[0];
-      
+
       markdown = `# ${title}\n\n` +
-                `**Source:** [${url}](${url})  \n` +
-                `**Imported:** ${date}\n\n` +
-                `---\n\n` +
-                markdown;
+        `**Source:** [${url}](${url})  \n` +
+        `**Imported:** ${date}\n\n` +
+        `---\n\n` +
+        markdown;
     }
-    
+
     // Clean up extra whitespace
     markdown = markdown
       .replace(/\n{3,}/g, '\n\n')
       .replace(/^\s+|\s+$/g, '')
       .trim();
-    
+
     return markdown;
   }
-  
+
   // Detect if current page is a code file viewer
   function detectCodeFilePage() {
     const url = window.location.href;
     const hostname = window.location.hostname;
-    
+
     // GitHub
     if (hostname.includes('github.com') && url.includes('/blob/')) return true;
     // GitLab
@@ -339,30 +464,34 @@ function extractContent(options) {
     if (hostname.includes('bitbucket.org') && url.includes('/src/')) return true;
     // Generic: check for code-like elements
     if (document.querySelector('pre code, .blob-code, .code-wrapper, .file-content')) return true;
-    
+
     return false;
   }
-  
+
   // Generic code file extraction for any platform
   function extractCodeFile(opts) {
     let codeContent = '';
     let codeElement = null;
-    
+
     // GitHub-specific extraction (different structure)
     if (window.location.hostname.includes('github.com')) {
-      // GitHub uses a table with line numbers and code
-      const codeLines = document.querySelectorAll('table[data-hpc] tr .blob-code-inner, td.blob-code-inner');
-      if (codeLines.length > 0) {
-        codeLines.forEach(line => {
+      // GitHub uses React-based div structure for code (2024+ structure)
+      const reactLines = document.querySelectorAll('.react-file-line');
+      if (reactLines.length > 0) {
+        reactLines.forEach(line => {
           codeContent += line.textContent + '\n';
         });
-        codeElement = codeLines[0];
-      } else {
-        // Try alternative GitHub structure
-        const blobCode = document.querySelector('.blob-code');
-        if (blobCode) {
-          codeContent = blobCode.textContent;
-          codeElement = blobCode;
+        codeElement = reactLines[0];
+      }
+
+      // Fallback: try legacy table structure (older GitHub or enterprise)
+      if (!codeContent) {
+        const codeLines = document.querySelectorAll('table[data-hpc] tr .blob-code-inner, td.blob-code-inner');
+        if (codeLines.length > 0) {
+          codeLines.forEach(line => {
+            codeContent += line.textContent + '\n';
+          });
+          codeElement = codeLines[0];
         }
       }
     } else {
@@ -380,7 +509,7 @@ function extractContent(options) {
         '.code-block',
         'code.hljs',
       ];
-      
+
       // Try each selector
       for (const selector of codeSelectors) {
         const element = document.querySelector(selector);
@@ -391,7 +520,7 @@ function extractContent(options) {
         }
       }
     }
-    
+
     // Fallback: try to find any pre or code element
     if (!codeContent) {
       codeElement = document.querySelector('pre') || document.querySelector('code');
@@ -399,12 +528,12 @@ function extractContent(options) {
         codeContent = codeElement.textContent;
       }
     }
-    
+
     if (!codeContent) {
       // Couldn't find code, fall back to regular extraction
       return null;
     }
-    
+
     // Get file name/path
     let fileName = 'Code';
     const titleElement = document.querySelector('title');
@@ -414,14 +543,14 @@ function extractContent(options) {
       const match = titleText.match(/([^/\\]+\.\w+)/);
       if (match) fileName = match[1];
     }
-    
+
     // Try to get from URL
     const urlParts = window.location.pathname.split('/');
     const lastPart = urlParts[urlParts.length - 1];
     if (lastPart && lastPart.includes('.')) {
       fileName = lastPart;
     }
-    
+
     // Detect language from filename
     const fileExt = fileName.split('.').pop().toLowerCase();
     const langMap = {
@@ -455,24 +584,24 @@ function extractContent(options) {
       'kt': 'kotlin',
     };
     const language = langMap[fileExt] || fileExt;
-    
+
     // Build markdown
     let markdown = '';
-    
+
     if (opts.includeMetadata) {
       markdown += `# ${fileName}\n\n`;
       markdown += `**Source:** [${window.location.href}](${window.location.href})  \n`;
       markdown += `**Imported:** ${new Date().toISOString().split('T')[0]}\n\n`;
       markdown += `---\n\n`;
     }
-    
+
     markdown += `\`\`\`${language}\n`;
     markdown += codeContent.trim();
     markdown += `\n\`\`\`\n`;
-    
+
     return markdown;
   }
-  
+
   return htmlToMarkdown(document.documentElement.innerHTML, options);
 }
 
