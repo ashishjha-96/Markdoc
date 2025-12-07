@@ -5,27 +5,79 @@ import { createHighlighter } from "shiki";
  * Core set optimized for common use cases and bundle size.
  */
 export const SUPPORTED_LANGUAGES: Record<string, { name: string; aliases?: string[] }> = {
-  // Web Development
+  // Web Development - Core
   javascript: { name: "JavaScript", aliases: ["js"] },
   typescript: { name: "TypeScript", aliases: ["ts"] },
+  jsx: { name: "JSX" },
+  tsx: { name: "TSX" },
   html: { name: "HTML", aliases: ["htm"] },
   css: { name: "CSS" },
+  scss: { name: "SCSS", aliases: ["sass"] },
+  less: { name: "Less" },
   json: { name: "JSON" },
-
-  // Backend Languages
+  xml: { name: "XML" },
+  
+  // Web Frameworks
+  vue: { name: "Vue" },
+  svelte: { name: "Svelte" },
+  
+  // Backend Languages - Popular
   python: { name: "Python", aliases: ["py"] },
   java: { name: "Java" },
   go: { name: "Go", aliases: ["golang"] },
   rust: { name: "Rust", aliases: ["rs"] },
   php: { name: "PHP" },
-
-  // Other
-  bash: { name: "Bash", aliases: ["sh", "shell", "zsh"] },
-  yaml: { name: "YAML", aliases: ["yml"] },
-  sql: { name: "SQL" },
-  markdown: { name: "Markdown", aliases: ["md"] },
+  ruby: { name: "Ruby", aliases: ["rb"] },
+  elixir: { name: "Elixir", aliases: ["ex", "exs"] },
+  
+  // Systems Programming
+  c: { name: "C" },
+  cpp: { name: "C++", aliases: ["c++", "cxx"] },
+  csharp: { name: "C#", aliases: ["cs"] },
+  
+  // Mobile Development
+  swift: { name: "Swift" },
+  kotlin: { name: "Kotlin", aliases: ["kt"] },
+  dart: { name: "Dart" },
+  
+  // Functional Languages
   haskell: { name: "Haskell", aliases: ["hs"] },
-  text: { name: "Text", aliases: ["txt"]}
+  scala: { name: "Scala" },
+  clojure: { name: "Clojure", aliases: ["clj"] },
+  ocaml: { name: "OCaml", aliases: ["ml"] },
+  fsharp: { name: "F#", aliases: ["fs"] },
+  elm: { name: "Elm" },
+  erlang: { name: "Erlang", aliases: ["erl"] },
+  
+  // Scripting & Shell
+  bash: { name: "Bash", aliases: ["sh", "shell", "zsh"] },
+  powershell: { name: "PowerShell", aliases: ["ps1", "pwsh"] },
+  lua: { name: "Lua" },
+  perl: { name: "Perl", aliases: ["pl"] },
+  
+  // Configuration & Data
+  yaml: { name: "YAML", aliases: ["yml"] },
+  toml: { name: "TOML" },
+  ini: { name: "INI" },
+  dockerfile: { name: "Dockerfile", aliases: ["docker"] },
+  
+  // Query Languages
+  sql: { name: "SQL" },
+  graphql: { name: "GraphQL", aliases: ["gql"] },
+  
+  // Markup & Documentation
+  markdown: { name: "Markdown", aliases: ["md"] },
+  latex: { name: "LaTeX", aliases: ["tex"] },
+  
+  // Data Science & Math
+  r: { name: "R" },
+  julia: { name: "Julia", aliases: ["jl"] },
+  matlab: { name: "MATLAB" },
+  
+  // Other
+  diff: { name: "Diff", aliases: ["patch"] },
+  regex: { name: "Regex", aliases: ["regexp"] },
+  text: { name: "Text", aliases: ["txt", "plaintext"] }
 };
 
 export const DEFAULT_LANGUAGE = "text";

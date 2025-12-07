@@ -4,6 +4,7 @@ defmodule Markdoc.Application do
   @moduledoc false
 
   use Application
+  require Logger
 
   @impl true
   def start(_type, _args) do
@@ -42,7 +43,19 @@ defmodule Markdoc.Application do
       try do
         Markdoc.DocServer.flush(doc_id)
       catch
-        _ -> :ok
+        :exit, reason ->
+          Logger.warning("Failed to flush document on shutdown",
+            event: :flush_failed,
+            doc_id: doc_id,
+            reason: inspect(reason)
+          )
+
+        :error, reason ->
+          Logger.warning("Failed to flush document on shutdown",
+            event: :flush_failed,
+            doc_id: doc_id,
+            reason: inspect(reason)
+          )
       end
     end)
 

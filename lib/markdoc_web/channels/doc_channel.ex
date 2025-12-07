@@ -223,8 +223,6 @@ defmodule MarkdocWeb.DocChannel do
   ## Private Functions
 
   defp generate_random_color do
-    # Generate a random hex color
-    "#" <>
-      (for _ <- 1..3, into: "", do: :rand.uniform(256) - 1 |> Integer.to_string(16) |> String.pad_leading(2, "0"))
+    "#" <> (3 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower))
   end
 end

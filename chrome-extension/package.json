@@ -1,0 +1,20 @@
+{
+  "name": "import-to-markdown-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension to import webpage content into Markdoc",
+  "scripts": {
+    "setup": "node create-placeholder-icons.js",
+    "package": "npm run package:zip",
+    "package:zip": "zip -r import-to-markdown.zip . -x '*.git*' -x 'node_modules/*' -x '*.zip' -x 'package*.json' -x 'create-placeholder-icons.js' -x 'icons/*.svg' -x 'generate-icons.html'",
+    "clean": "rm -rf icons/*.svg icons/*.png import-to-markdown.zip"
+  },
+  "keywords": [
+    "chrome-extension",
+    "markdown",
+    "web-clipper",
+    "markdoc"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
