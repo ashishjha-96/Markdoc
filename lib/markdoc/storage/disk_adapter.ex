@@ -40,6 +40,8 @@ defmodule Markdoc.Storage.DiskAdapter do
 
     data_path = data_path(doc_id, opts)
     meta_path = meta_path(doc_id, opts)
+    data_tmp = data_path <> ".tmp"
+    meta_tmp = meta_path <> ".tmp"
 
     data_serialized = %{
       "history" => Enum.map(payload.history, &Base.encode64/1)
@@ -52,14 +54,25 @@ defmodule Markdoc.Storage.DiskAdapter do
       "version" => payload.version
     }
 
+    # Write to temp files first, then atomically rename
     with {:ok, data_json} <- Jason.encode(data_serialized),
          {:ok, meta_json} <- Jason.encode(meta_serialized),
-         :ok <- File.write(data_path, data_json),
-         :ok <- File.write(meta_path, meta_json) do
+         :ok <- File.write(data_tmp, data_json),
+         :ok <- File.write(meta_tmp, meta_json),
+         :ok <- File.rename(data_tmp, data_path),
+         :ok <- File.rename(meta_tmp, meta_path) do
       :ok
     else
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :invalid_payload}
+      {:error, reason} ->
+        # Clean up temp files on failure
+        File.rm(data_tmp)
+        File.rm(meta_tmp)
+        {:error, reason}
+
+      _ ->
+        File.rm(data_tmp)
+        File.rm(meta_tmp)
+        {:error, :invalid_payload}
     end
   end
 
