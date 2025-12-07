@@ -16,36 +16,36 @@ export function useCodeBlockAutoDetect(editor: BlockNoteEditor<any, any, any> | 
     const handleTextChange = () => {
       try {
         const blocks = editor.document;
-        
+
         for (const block of blocks) {
           // Only process code blocks
           if (block.type !== "codeBlock") continue;
-          
+
           // Skip if language is already set and not "text"
           const currentLang = (block as any).props?.language || "text";
           if (currentLang !== "text" && currentLang !== "") {
             continue;
           }
-          
+
           // Get the code content
-          const codeContent = block.content
-            ?.map((item: any) => item.text || "")
-            .join("\n") || "";
-          
+          const codeContent = Array.isArray(block.content)
+            ? block.content.map((item: any) => item.text || "").join("\n")
+            : "";
+
           // Skip very short content
           if (codeContent.trim().length < 15) {
             continue;
           }
-          
+
           // Check if we've already processed this content
           const lastLang = blockLanguages.get(block.id);
           if (lastLang) {
             continue;
           }
-          
+
           // Detect language
           const detectedLang = detectLanguageWithHeuristics(codeContent);
-          
+
           if (detectedLang && detectedLang !== "text") {
             // Update the block's language property
             editor.updateBlock(block.id, {
@@ -54,7 +54,7 @@ export function useCodeBlockAutoDetect(editor: BlockNoteEditor<any, any, any> | 
                 language: detectedLang,
               },
             });
-            
+
             // Remember we've set this language
             blockLanguages.set(block.id, detectedLang);
           }
@@ -66,7 +66,7 @@ export function useCodeBlockAutoDetect(editor: BlockNoteEditor<any, any, any> | 
     };
 
     // Listen for editor changes with debouncing
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
     const debouncedHandler = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(handleTextChange, 500); // Wait 500ms after typing stops
