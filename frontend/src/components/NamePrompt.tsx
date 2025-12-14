@@ -35,6 +35,7 @@ export function NamePrompt({ onSubmit, docId }: NamePromptProps) {
       }}
     >
       <div
+        className="mobile-modal"
         style={{
           backgroundColor: "white",
           borderRadius: "12px",

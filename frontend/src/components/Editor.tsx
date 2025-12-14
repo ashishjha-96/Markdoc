@@ -392,6 +392,7 @@ export function Editor({ docId }: EditorProps) {
       >
         {/* Header */}
         <div
+          className="mobile-header"
           style={{
             backgroundColor: "var(--header-bg)",
             borderBottom: "1px solid var(--header-border)",
@@ -400,16 +401,20 @@ export function Editor({ docId }: EditorProps) {
           }}
         >
           <div
+            className="mobile-header-content"
             style={{
               maxWidth: "1200px",
               margin: "0 auto",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              flexWrap: "wrap",
+              gap: "12px",
             }}
           >
             <div>
               <h1
+                className="mobile-logo"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -419,9 +424,9 @@ export function Editor({ docId }: EditorProps) {
                   color: "var(--page-text)",
                 }}
               >
-                <span style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>[</span>
+                <span className="mobile-logo-bracket" style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>[</span>
                 <span>MarkDoc </span>
-                <span style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>]</span>
+                <span className="mobile-logo-bracket" style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>]</span>
               </h1>
               <p
                 style={{
@@ -430,21 +435,23 @@ export function Editor({ docId }: EditorProps) {
                   fontSize: "13px"
                 }}
               >
-                Document:{" "}
-                <code
-                  style={{
-                    background: mode === "dark" ? "#21262d" : "#f5f5f5",
-                    padding: "2px 6px",
-                    borderRadius: "3px",
-                    fontSize: "12px",
-                    color: mode === "dark" ? "#e6edf3" : "#24292f",
-                  }}
-                >
-                  {docId}
-                </code>
+                <span className="mobile-hide">
+                  Document:{" "}
+                  <code
+                    style={{
+                      background: mode === "dark" ? "#21262d" : "#f5f5f5",
+                      padding: "2px 6px",
+                      borderRadius: "3px",
+                      fontSize: "12px",
+                      color: mode === "dark" ? "#e6edf3" : "#24292f",
+                    }}
+                  >
+                    {docId}
+                  </code>
+                  {" · "}
+                </span>
                 {userInfo && (
                   <>
-                    {" · "}
                     Logged in as:{" "}
                     <span style={{ fontWeight: 500 }}>{userInfo.name}</span>
                   </>
@@ -453,6 +460,7 @@ export function Editor({ docId }: EditorProps) {
             </div>
 
             <div
+              className="mobile-header-actions"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -483,6 +491,7 @@ export function Editor({ docId }: EditorProps) {
 
         {/* Editor Container */}
         <div
+          className="mobile-editor-container editor-wrapper"
           style={{
             maxWidth: "1200px",
             margin: "0 auto",

@@ -46,6 +46,7 @@ export function Landing() {
       }}
     >
       <div
+        className="mobile-modal"
         style={{
           backgroundColor: "white",
           borderRadius: "12px",
