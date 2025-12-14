@@ -50,6 +50,7 @@ export function UserPresence({ channel }: UserPresenceProps) {
       {overflowCount > 0 && (
         <div style={{ position: "relative", marginLeft: "4px" }}>
           <div
+            className="mobile-avatar-overflow"
             onClick={() => setShowOverflow(!showOverflow)}
             style={{
               width: "36px",
@@ -206,6 +207,7 @@ function UserAvatar({
       }}
     >
       <div
+        className="mobile-avatar"
         style={{
           width: "36px",
           height: "36px",

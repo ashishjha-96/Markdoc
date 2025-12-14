@@ -224,6 +224,7 @@ export function SearchBar({ editor }: SearchBarProps) {
     <>
       {/* Main search bar */}
       <div
+        className="mobile-search-bar"
         style={{
           position: "fixed",
           top: "80px",
@@ -234,7 +235,7 @@ export function SearchBar({ editor }: SearchBarProps) {
           border: `2px solid ${mode === "dark" ? "#30363d" : "#e0e0e0"}`,
           borderRadius: "8px",
           boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
-          minWidth: "500px",
+          width: "90%",
           maxWidth: "700px",
           animation: "slideDown 0.2s ease-out",
         }}
@@ -347,6 +348,7 @@ export function SearchBar({ editor }: SearchBarProps) {
         {/* Results list */}
         {results.length > 0 && searchQuery && (
           <div
+            className="mobile-search-results"
             style={{
               maxHeight: "400px",
               overflowY: "auto",

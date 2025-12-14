@@ -145,6 +145,7 @@ export function ExportMenu({ editor, docId, onNewDocument, yDoc }: ExportMenuPro
 
           {/* Menu Content */}
           <div
+            className="mobile-dropdown"
             style={{
               position: "absolute",
               top: "calc(100% + 8px)",

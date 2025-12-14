@@ -129,6 +129,7 @@ export function KeyboardShortcutsMenu() {
 
         {/* Content - Compact Grid */}
         <div
+          className="mobile-shortcuts-grid"
           style={{
             padding: "20px",
             display: "grid",
