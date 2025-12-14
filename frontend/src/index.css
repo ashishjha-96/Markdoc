@@ -190,26 +190,22 @@ body {
   cursor: pointer !important;
 }
 
-/* Block selection highlighting - multiple selectors for different selection states */
+/* Block selection highlighting - disabled for cleaner look */
+/* Individual block content handles its own selection state */
 .bn-block-outer.ProseMirror-selectednode,
 .bn-block-outer[data-node-type].ProseMirror-selectednode,
 .bn-block.ProseMirror-selectednode,
 .ProseMirror-selectednode>.bn-block-outer,
 .bn-block-outer[data-is-selected="true"],
 .bn-block-content:has(.ProseMirror-selectednode) {
-  background-color: var(--block-selection-bg) !important;
-  border-radius: 4px;
-  transition: background-color 0.15s ease;
-  outline: 2px solid rgba(100, 108, 255, 0.3) !important;
-  outline-offset: -2px;
+  background-color: transparent !important;
+  outline: none !important;
 }
 
-/* Selection via click (entire block selected) */
+/* Selection via click (entire block selected) - disabled */
 .bn-block-outer:focus-within {
-  background-color: var(--block-selection-bg) !important;
-  border-radius: 4px;
-  outline: 2px solid rgba(100, 108, 255, 0.3);
-  outline-offset: -2px;
+  background-color: transparent !important;
+  outline: none !important;
 }
 
 /* Subtle hover effect on blocks */
@@ -224,7 +220,7 @@ body {
 }
 
 :root[data-theme="dark"] .bn-block-outer:focus-within {
-  outline-color: rgba(100, 108, 255, 0.5);
+  outline: none !important;
 }
 
 /* Block animations */
@@ -570,6 +566,70 @@ html {
   display: block;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* ===== Embed Block Styles ===== */
+
+/* Embed block container */
+.embed-block {
+  transition: all 0.2s ease;
+}
+
+/* Remove full-width selection highlighting from embed block parent */
+.bn-block-content:has(.embed-block-input),
+.bn-block-content:has(.embed-block) {
+  background-color: transparent !important;
+}
+
+.bn-block-outer:has(.embed-block-input):focus-within,
+.bn-block-outer:has(.embed-block):focus-within {
+  background-color: transparent !important;
+  outline: none !important;
+}
+
+/* Embed input container - inline style */
+.embed-block-input {
+  transition: all 0.2s ease;
+}
+
+.embed-block-input:focus-within {
+  border-color: #646cff !important;
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.1);
+}
+
+.embed-block-input input::placeholder {
+  color: var(--chat-text-tertiary);
+}
+
+/* Dark mode adjustments for embed input */
+:root[data-theme="dark"] .embed-block-input {
+  border-color: var(--chat-border);
+}
+
+:root[data-theme="dark"] .embed-block-input:focus-within {
+  border-color: #646cff !important;
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.2);
+}
+
+/* Responsive embed on mobile */
+@media (max-width: 768px) {
+  .embed-block {
+    max-width: 100% !important;
+  }
+
+  .embed-block-input {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px !important;
+  }
+
+  .embed-block-input input {
+    width: 100%;
+  }
+
+  .embed-block-input button {
+    width: 100%;
+  }
 }
 
 /* ===== Mobile Responsiveness ===== */

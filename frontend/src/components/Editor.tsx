@@ -73,7 +73,7 @@ const insertChatBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
     );
   },
   aliases: ["chat", "message", "discussion", "conversation"],
-  group: "Other",
+  group: "Advanced",
   icon: "💬" as any,
   subtext: "Start a collaborative chat discussion",
 });
@@ -98,17 +98,55 @@ const insertMermaidBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
     );
   },
   aliases: ["mermaid", "diagram", "flowchart", "chart", "graph"],
-  group: "Other",
+  group: "Advanced",
   icon: "📊" as any,
   subtext: "Create a Mermaid flowchart or diagram",
 });
 
+// Custom slash menu item for embed block (YouTube, Vimeo, Spotify, etc.)
+const insertEmbedBlockItem = (editor: BlockNoteEditor<any, any, any>) => ({
+  title: "Embed",
+  onItemClick: () => {
+    const currentBlock = editor.getTextCursorPosition().block;
+    editor.insertBlocks(
+      [{
+        type: "embed" as any,
+        props: {
+          url: "",
+          width: 640,
+          height: 360,
+          caption: "",
+        }
+      }],
+      currentBlock.id,
+      "after"
+    );
+  },
+  aliases: ["embed", "youtube", "video", "vimeo", "spotify", "twitch", "loom", "figma"],
+  group: "Media",
+  icon: "🔗" as any,
+  subtext: "Embed YouTube, Vimeo, Spotify, and more",
+});
+
 // Get all slash menu items including custom blocks
-const getCustomSlashMenuItems = (editor: BlockNoteEditor<any, any, any>) => [
-  ...getDefaultReactSlashMenuItems(editor),
-  insertChatBlockItem(editor),
-  insertMermaidBlockItem(editor),
-];
+const getCustomSlashMenuItems = (editor: BlockNoteEditor<any, any, any>) => {
+  const defaultItems = getDefaultReactSlashMenuItems(editor);
+
+  // Find index of Table (last item in Advanced group) to insert Chat and Mermaid after it
+  const tableIndex = defaultItems.findIndex(item => item.title === "Table");
+  if (tableIndex !== -1) {
+    defaultItems.splice(tableIndex + 1, 0, insertChatBlockItem(editor), insertMermaidBlockItem(editor));
+  }
+
+  // Find index of File (last item in Media group) to insert Embed after it
+  // Note: indices shifted after previous splice, so we search again
+  const fileIndex = defaultItems.findIndex(item => item.title === "File");
+  if (fileIndex !== -1) {
+    defaultItems.splice(fileIndex + 1, 0, insertEmbedBlockItem(editor));
+  }
+
+  return defaultItems;
+};
 
 // Filter slash menu items based on query
 const filterSlashMenuItems = (
@@ -176,13 +214,13 @@ export function Editor({ docId }: EditorProps) {
       schema, // Custom schema with syntax highlighting
       collaboration: provider
         ? {
-            fragment: doc.getXmlFragment("document"),
-            user: {
-              name: userInfo?.name || "Anonymous",
-              color: userColor,
-            },
-            provider,
-          }
+          fragment: doc.getXmlFragment("document"),
+          user: {
+            name: userInfo?.name || "Anonymous",
+            color: userColor,
+          },
+          provider,
+        }
         : undefined,
     },
     [provider, mode] // Recreate editor when provider or mode changes
@@ -313,12 +351,12 @@ export function Editor({ docId }: EditorProps) {
       try {
         // Convert markdown to BlockNote blocks
         const blocks = await editor.tryParseMarkdownToBlocks(markdown);
-        
+
         // Replace the default empty paragraph with imported content
         editor.replaceBlocks(editor.document, blocks);
-        
+
         console.log('✓ Successfully imported content');
-        
+
         // Clean up URL parameter
         window.history.replaceState({}, '', `/${docId}`);
       } catch (error) {
@@ -424,9 +462,9 @@ export function Editor({ docId }: EditorProps) {
                   color: "var(--page-text)",
                 }}
               >
-                <span className="mobile-logo-bracket" style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>[</span>
+                <span className="mobile-logo-bracket" style={{ fontWeight: 800, fontSize: "28px", color: "#646cff" }}>[</span>
                 <span>MarkDoc </span>
-                <span className="mobile-logo-bracket" style={{ fontWeight: 800, fontSize:"28px", color: "#646cff"}}>]</span>
+                <span className="mobile-logo-bracket" style={{ fontWeight: 800, fontSize: "28px", color: "#646cff" }}>]</span>
               </h1>
               <p
                 style={{

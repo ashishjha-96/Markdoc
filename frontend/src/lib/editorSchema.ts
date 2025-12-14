@@ -8,6 +8,7 @@ import {
 } from "./syntaxHighlighting";
 import { ChatBlock } from "../components/chat/ChatBlock";
 import { MermaidBlock } from "../components/mermaid/MermaidBlock";
+import { EmbedBlock } from "../components/embed/EmbedBlock";
 
 // Chat block specification
 const chatBlockSpec = createReactBlockSpec(
@@ -69,9 +70,36 @@ const mermaidBlockSpec = createReactBlockSpec(
   }
 );
 
+// Embed block specification (YouTube, Vimeo, Spotify, Twitch, etc.)
+const embedBlockSpec = createReactBlockSpec(
+  {
+    type: "embed" as const,
+    propSchema: {
+      url: {
+        default: "",
+      },
+      width: {
+        default: 640, // Default width in pixels
+      },
+      height: {
+        default: 360, // Default height in pixels
+      },
+      caption: {
+        default: "",
+      },
+    },
+    content: "none" as const,
+  },
+  {
+    render: (props) => {
+      return createElement(EmbedBlock, { block: props.block });
+    },
+  }
+);
+
 /**
- * Custom BlockNote schema with syntax-highlighted code blocks, chat blocks, and mermaid blocks.
- * Overrides the codeBlock spec and adds custom chat and mermaid blocks.
+ * Custom BlockNote schema with syntax-highlighted code blocks, chat blocks, mermaid blocks, and embed blocks.
+ * Overrides the codeBlock spec and adds custom blocks for chat, mermaid diagrams, and media embeds.
  */
 export const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -87,6 +115,8 @@ export const schema = BlockNoteSchema.create({
     chat: chatBlockSpec(),
     // Add custom mermaid block
     mermaid: mermaidBlockSpec(),
+    // Add custom embed block (YouTube, Vimeo, Spotify, etc.)
+    embed: embedBlockSpec(),
   },
 });
 
