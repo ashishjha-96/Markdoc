@@ -222,6 +222,36 @@ export function Editor({ docId }: EditorProps) {
           provider,
         }
         : undefined,
+      // Enable automatic markdown formatting on paste
+      pasteHandler: ({ event, editor, defaultPasteHandler }) => {
+        // Get clipboard data
+        const clipboardData = event.clipboardData;
+        if (!clipboardData) {
+          return defaultPasteHandler();
+        }
+
+        // Check if there's plain text content that might be markdown
+        const plainText = clipboardData.getData("text/plain");
+
+        if (plainText) {
+          // Check if the text looks like it contains markdown syntax
+          // Use multiline flag to detect patterns at the start of any line
+          const hasMarkdownSyntax = /^#{1,6}\s|^\s*[-*+]\s|^\s*\d+\.\s|\*\*|__|```|^>\s/m.test(plainText);
+
+          if (hasMarkdownSyntax) {
+            event.preventDefault();
+            // Use the editor's markdown paste function
+            editor.pasteMarkdown(plainText);
+            return true;
+          }
+        }
+
+        // For other cases, use default handler with markdown-friendly options
+        return defaultPasteHandler({
+          prioritizeMarkdownOverHTML: true,
+          plainTextAsMarkdown: true,
+        });
+      },
     },
     [provider, mode] // Recreate editor when provider or mode changes
   );
