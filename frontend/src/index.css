@@ -69,6 +69,8 @@ body {
   padding: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
     'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 22px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--page-bg);
@@ -79,6 +81,51 @@ body {
 #root {
   width: 100%;
   min-height: 100vh;
+}
+
+/* ===== VS Code-style Heading Typography ===== */
+/* Matching VS Code's markdown preview heading sizes and styling */
+
+.bn-editor h1,
+.bn-editor h2,
+.bn-editor h3,
+.bn-editor h4,
+.bn-editor h5,
+.bn-editor h6 {
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  line-height: 1.25;
+}
+
+.bn-editor h1 {
+  font-size: 2em;
+  margin-top: 0;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--editor-border);
+}
+
+.bn-editor h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--editor-border);
+}
+
+.bn-editor h3 {
+  font-size: 1.25em;
+}
+
+.bn-editor h4 {
+  font-size: 1em;
+}
+
+.bn-editor h5 {
+  font-size: 0.875em;
+}
+
+.bn-editor h6 {
+  font-size: 0.85em;
+  color: var(--chat-text-secondary);
 }
 
 /* Code block container background - uses CSS variables that change with theme */
@@ -759,17 +806,33 @@ html {
     line-height: 1.6;
   }
 
-  /* Scale down headings on mobile for better proportion */
+  /* Scale down headings on mobile for better proportion (VS Code ratios scaled down) */
   .bn-editor h1 {
-    font-size: 1.4em !important;
+    font-size: 1.6em !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
   }
 
   .bn-editor h2 {
-    font-size: 1.2em !important;
+    font-size: 1.25em !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
   }
 
   .bn-editor h3 {
     font-size: 1.1em !important;
+  }
+
+  .bn-editor h4 {
+    font-size: 0.95em !important;
+  }
+
+  .bn-editor h5 {
+    font-size: 0.85em !important;
+  }
+
+  .bn-editor h6 {
+    font-size: 0.8em !important;
   }
 
   /* Slash menu adjustments for mobile */
