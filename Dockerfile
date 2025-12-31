@@ -12,14 +12,14 @@ RUN cd frontend && npm run build
 
 
 # Stage 2: Build backend release
-FROM elixir:1.15.8-alpine AS backend_builder
+FROM elixir:1.18-alpine AS backend_builder
 
 ENV MIX_ENV=prod
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apk --no-cache add build-base git
+RUN apk --no-cache add build-base git openssl-dev
 
 # Install hex and rebar
 RUN mix local.hex --force && mix local.rebar --force
