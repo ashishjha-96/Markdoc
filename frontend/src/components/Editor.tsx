@@ -33,7 +33,7 @@ import { usePresence } from "../hooks/usePresence";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useCodeBlockAutoDetect } from "../hooks/useCodeBlockAutoDetect";
 import { generateDocId } from "../lib/generateDocId";
-import { requestImport, onImportMarkdown } from "../lib/importBridge";
+import { requestImport, onImportMarkdown, fetchPendingImport } from "../lib/importBridge";
 import { EditorContext } from "./chat/ChatBlock";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -355,7 +355,7 @@ export function Editor({ docId }: EditorProps) {
     };
   }, [provider, editor]);
 
-  // Handle import from Chrome extension
+  // Handle import from external sources (VSCode extension via API, Chrome extension via postMessage)
   useEffect(() => {
     if (!editor || !provider) return;
 
@@ -367,15 +367,10 @@ export function Editor({ docId }: EditorProps) {
 
     console.log('📥 Checking for import data...');
 
-    // Request import data from extension
-    requestImport(docId);
-
-    // Listen for markdown response
-    const cleanup = onImportMarkdown(docId, async (markdown, sourceUrl, sourceTitle) => {
-      console.log('✓ Received markdown from extension:', {
+    // Helper to import markdown content
+    const importMarkdown = async (markdown: string, source: string) => {
+      console.log(`✓ Received markdown from ${source}:`, {
         length: markdown.length,
-        sourceUrl,
-        sourceTitle,
       });
 
       try {
@@ -392,6 +387,34 @@ export function Editor({ docId }: EditorProps) {
       } catch (error) {
         console.error('Failed to import markdown:', error);
       }
+    };
+
+    // First, try to fetch from API (VSCode extension flow)
+    const tryApiImport = async () => {
+      const markdown = await fetchPendingImport(docId);
+      if (markdown) {
+        await importMarkdown(markdown, 'API');
+        return true;
+      }
+      return false;
+    };
+
+    // Try API first, then fall back to Chrome extension
+    tryApiImport().then((imported) => {
+      if (!imported) {
+        // Fall back to Chrome extension flow
+        requestImport(docId);
+      }
+    });
+
+    // Listen for markdown from Chrome extension (fallback)
+    const cleanup = onImportMarkdown(docId, async (markdown, sourceUrl, sourceTitle) => {
+      console.log('✓ Received markdown from Chrome extension:', {
+        length: markdown.length,
+        sourceUrl,
+        sourceTitle,
+      });
+      await importMarkdown(markdown, 'Chrome extension');
     });
 
     return cleanup;

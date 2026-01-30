@@ -14,14 +14,17 @@ defmodule MarkdocWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # API routes for external integrations (VSCode extension, etc.)
+  scope "/api", MarkdocWeb do
+    pipe_through :api
+
+    post "/import", ImportController, :create
+    get "/import/:doc_id", ImportController, :show
+  end
+
   scope "/", MarkdocWeb do
     pipe_through :browser
 
     get "/*path", PageController, :index
   end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", MarkdocWeb do
-  #   pipe_through :api
-  # end
 end

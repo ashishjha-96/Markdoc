@@ -1,8 +1,8 @@
 /**
  * Import Bridge
- * 
- * Handles communication between the Chrome extension and the Markdoc app
- * to import markdown content from webpages.
+ *
+ * Handles communication between external sources (Chrome extension, VSCode extension)
+ * and the Markdoc app to import markdown content.
  */
 
 export interface ImportData {
@@ -20,6 +20,31 @@ export function initImportBridge() {
   console.log('📥 Import bridge initialized');
   // Note: The actual chrome.storage access happens in the content script
   // This just sets up message listeners
+}
+
+/**
+ * Fetch pending import from the API (used by VSCode extension flow)
+ * This is a one-time read - the content is deleted after retrieval.
+ * Returns the markdown content if found, null otherwise.
+ */
+export async function fetchPendingImport(docId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/import/${docId}`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        console.log('📥 No pending import found for:', docId);
+        return null;
+      }
+      console.error('📥 Failed to fetch pending import:', res.status);
+      return null;
+    }
+    const data = await res.json();
+    console.log('📥 Fetched pending import:', { docId, length: data.markdown?.length });
+    return data.markdown || null;
+  } catch (error) {
+    console.error('📥 Error fetching pending import:', error);
+    return null;
+  }
 }
 
 /**

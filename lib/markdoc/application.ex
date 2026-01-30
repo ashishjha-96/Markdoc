@@ -16,6 +16,8 @@ defmodule Markdoc.Application do
       Markdoc.DocRegistry,
       # Document Supervisor for dynamic doc processes
       Markdoc.DocSupervisor,
+      # Pending imports for VSCode extension
+      Markdoc.PendingImports,
       # Retention cleanup worker
       Markdoc.Storage.CleanupWorker,
       # Presence tracking for collaborative features

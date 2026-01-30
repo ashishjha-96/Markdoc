@@ -1,0 +1,94 @@
+{
+  "name": "markdoc-export",
+  "displayName": "Markdoc Export",
+  "description": "Export markdown and code files to markdoc.live for collaborative editing",
+  "version": "0.1.0",
+  "publisher": "markdoc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ashishjha-96/Markdoc"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "export",
+    "collaboration",
+    "markdoc"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "markdoc.exportFile",
+        "title": "Export File to Markdoc.live"
+      },
+      {
+        "command": "markdoc.exportSelection",
+        "title": "Export Selection to Markdoc.live"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "markdoc.exportFile",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "markdoc.exportFile",
+          "group": "navigation",
+          "when": "editorHasSelection == false"
+        },
+        {
+          "command": "markdoc.exportSelection",
+          "group": "navigation",
+          "when": "editorHasSelection"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "markdoc.exportFile",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "markdoc.exportSelection",
+          "when": "editorIsOpen && editorHasSelection"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Markdoc Export",
+      "properties": {
+        "markdoc.serverUrl": {
+          "type": "string",
+          "default": "https://markdoc.live",
+          "description": "The Markdoc server URL"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}
