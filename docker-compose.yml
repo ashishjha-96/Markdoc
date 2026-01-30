@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  markdoc:
+    image: ajha2025/markdoc:latest
+    container_name: markdoc
+    ports:
+      - "${MARKDOC_PORT:-4000}:4000"
+    environment:
+      # Required settings
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - PHX_HOST=${PHX_HOST:-localhost}
+      - PORT=4000
+      - PHX_SERVER=true
+      
+      # CORS / Allowed origins (comma-separated)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4000,http://localhost:5173}
+      
+      # Storage backend: "s3" for Cloudflare R2
+      - MARKDOC_STORAGE_BACKEND=s3
+      
+      # Cloudflare R2 Configuration
+      - MARKDOC_S3_BUCKET=${MARKDOC_S3_BUCKET}
+      - MARKDOC_S3_PREFIX=${MARKDOC_S3_PREFIX:-documents/}
+      - MARKDOC_S3_REGION=${MARKDOC_S3_REGION:-auto}
+      - MARKDOC_S3_ACCESS_KEY_ID=${MARKDOC_S3_ACCESS_KEY_ID}
+      - MARKDOC_S3_SECRET_ACCESS_KEY=${MARKDOC_S3_SECRET_ACCESS_KEY}
+      
+      # R2 endpoint: <ACCOUNT_ID>.r2.cloudflarestorage.com
+      - MARKDOC_S3_HOST=${MARKDOC_S3_HOST}
+      - MARKDOC_S3_SCHEME=https://
+      
+      # Storage tuning (optional)
+      - MARKDOC_FLUSH_INTERVAL_MS=${MARKDOC_FLUSH_INTERVAL_MS:-30000}
+      - MARKDOC_IDLE_FLUSH_MS=${MARKDOC_IDLE_FLUSH_MS:-300000}
+      - MARKDOC_RETENTION_HOURS=${MARKDOC_RETENTION_HOURS:-24}
+      - MARKDOC_CLEANUP_INTERVAL_MS=${MARKDOC_CLEANUP_INTERVAL_MS:-900000}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
