@@ -34,6 +34,10 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             # set version tag for git tags
             type=semver,pattern={{version}}
+            # set short sha tag for every commit
+            type=sha,prefix=,format=short
+            # set full sha tag for every commit
+            type=sha,prefix=,format=long
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
