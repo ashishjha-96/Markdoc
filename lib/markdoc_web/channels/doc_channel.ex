@@ -17,6 +17,14 @@ defmodule MarkdocWeb.DocChannel do
   - "request_snapshot" %{} - Request client to compress document
   - "presence_state" %{...} - Initial presence state
   - "presence_diff" %{...} - Presence changes
+
+  ## Authorization
+
+  Documents on the private domain require authentication and respect sharing settings:
+  - :public - Anyone can access
+  - :authenticated_users - Any authenticated user can access
+  - :specific_people - Only owner and listed emails can access
+  - :only_me - Only the owner can access
   """
 
   use MarkdocWeb, :channel
@@ -30,63 +38,79 @@ defmodule MarkdocWeb.DocChannel do
     Logger.metadata(doc_id: doc_id)
     Logger.info("Client joining document", event: :client_join, doc_id: doc_id)
 
-    # Ensure document process exists
-    case DocRegistry.lookup(doc_id) do
-      [] ->
-        Logger.info("Document not found, starting new process",
-          event: :document_start,
-          reason: :not_found
-        )
+    auth_user = socket.assigns[:auth_user] || %{authenticated: false, domain: :public}
 
-        case DocSupervisor.start_doc(doc_id) do
-          {:ok, _pid} -> :ok
-          {:error, {:already_started, _pid}} -> :ok
+    # Ensure document process exists
+    ensure_doc_exists(doc_id)
+
+    # Get document metadata for authorization
+    metadata = DocServer.get_metadata(doc_id)
+
+    # Check authorization
+    case authorize(auth_user, metadata) do
+      :ok ->
+        # Set owner if new private doc
+        if is_nil(metadata.owner_email) and auth_user.domain == :private and auth_user.authenticated do
+          DocServer.set_owner(doc_id, auth_user.email, auth_user.sub)
         end
 
-      [{_pid, _}] ->
-        Logger.debug("Document already exists", event: :document_exists)
-        :ok
+        # Register this channel with the document server
+        DocServer.join(doc_id, self())
+
+        # Fetch history
+        history = DocServer.get_history(doc_id)
+
+        Logger.debug("Document history fetched",
+          event: :history_fetched,
+          history_size: length(history)
+        )
+
+        # Convert binary history to arrays for JSON transport
+        history_arrays = Enum.map(history, &:erlang.binary_to_list/1)
+
+        # Assign doc_id to socket for later use
+        socket = assign(socket, :doc_id, doc_id)
+
+        # Generate a unique user_id for this connection
+        user_id = "user_#{:erlang.phash2(self())}"
+        socket = assign(socket, :user_id, user_id)
+
+        # Extract user info from params (sent by client)
+        user_info = params["user"] || %{}
+        user_name = user_info["name"] || "Anonymous"
+        user_color = user_info["color"] || generate_random_color()
+
+        socket = assign(socket, :user_name, user_name)
+        socket = assign(socket, :user_color, user_color)
+
+        # Check if user is the owner
+        is_owner = auth_user.email != nil and auth_user.email == metadata.owner_email
+
+        Logger.info("User joining document",
+          event: :user_join,
+          user_name: user_name,
+          user_color: user_color,
+          is_owner: is_owner
+        )
+
+        # Track presence after join (send message to self)
+        send(self(), :after_join)
+
+        {:ok, %{
+          history: history_arrays,
+          is_owner: is_owner,
+          sharing_mode: metadata.sharing_mode,
+          is_private_domain: auth_user.domain == :private
+        }, socket}
+
+      {:error, reason} ->
+        Logger.warning("Authorization denied for document",
+          event: :auth_denied,
+          reason: reason,
+          user_email: auth_user[:email]
+        )
+        {:error, %{reason: reason}}
     end
-
-    # Register this channel with the document server
-    DocServer.join(doc_id, self())
-
-    # Fetch history
-    history = DocServer.get_history(doc_id)
-
-    Logger.debug("Document history fetched",
-      event: :history_fetched,
-      history_size: length(history)
-    )
-
-    # Convert binary history to arrays for JSON transport
-    history_arrays = Enum.map(history, &:erlang.binary_to_list/1)
-
-    # Assign doc_id to socket for later use
-    socket = assign(socket, :doc_id, doc_id)
-
-    # Generate a unique user_id for this connection
-    user_id = "user_#{:erlang.phash2(self())}"
-    socket = assign(socket, :user_id, user_id)
-
-    # Extract user info from params (sent by client)
-    user_info = params["user"] || %{}
-    user_name = user_info["name"] || "Anonymous"
-    user_color = user_info["color"] || generate_random_color()
-
-    socket = assign(socket, :user_name, user_name)
-    socket = assign(socket, :user_color, user_color)
-
-    Logger.info("User joining document",
-      event: :user_join,
-      user_name: user_name,
-      user_color: user_color
-    )
-
-    # Track presence after join (send message to self)
-    send(self(), :after_join)
-
-    {:ok, %{history: history_arrays}, socket}
   end
 
   @impl true
@@ -221,6 +245,61 @@ defmodule MarkdocWeb.DocChannel do
   end
 
   ## Private Functions
+
+  defp ensure_doc_exists(doc_id) do
+    case DocRegistry.lookup(doc_id) do
+      [] ->
+        Logger.info("Document not found, starting new process",
+          event: :document_start,
+          reason: :not_found
+        )
+
+        case DocSupervisor.start_doc(doc_id) do
+          {:ok, _pid} -> :ok
+          {:error, {:already_started, _pid}} -> :ok
+        end
+
+      [{_pid, _}] ->
+        Logger.debug("Document already exists", event: :document_exists)
+        :ok
+    end
+  end
+
+  defp authorize(auth_user, metadata) do
+    cond do
+      # Public documents are accessible to everyone
+      metadata.sharing_mode == :public ->
+        :ok
+
+      # Legacy documents without sharing mode are treated as public
+      is_nil(metadata.sharing_mode) and is_nil(metadata.owner_email) ->
+        :ok
+
+      # Document owner always has access
+      auth_user[:email] != nil and metadata.owner_email == auth_user[:email] ->
+        :ok
+
+      # Authenticated users mode - any authenticated user can access
+      metadata.sharing_mode == :authenticated_users and auth_user[:authenticated] == true ->
+        :ok
+
+      # Specific people mode - check if user's email is in allowed list
+      metadata.sharing_mode == :specific_people and auth_user[:email] in (metadata.allowed_emails || []) ->
+        :ok
+
+      # Only me mode - only owner (handled above)
+      metadata.sharing_mode == :only_me ->
+        {:error, "unauthorized"}
+
+      # Public domain accessing a private document without proper permissions
+      auth_user[:domain] == :public and metadata.owner_email != nil ->
+        {:error, "unauthorized"}
+
+      # Default deny
+      true ->
+        {:error, "unauthorized"}
+    end
+  end
 
   defp generate_random_color do
     "#" <> (3 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower))

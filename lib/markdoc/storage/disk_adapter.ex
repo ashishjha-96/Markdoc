@@ -24,7 +24,11 @@ defmodule Markdoc.Storage.DiskAdapter do
          created_at: meta.created_at,
          last_updated_at: meta.last_updated_at,
          history: history,
-         version: meta.version
+         version: meta.version,
+         owner_email: Map.get(meta, :owner_email),
+         owner_sub: Map.get(meta, :owner_sub),
+         sharing_mode: Map.get(meta, :sharing_mode),
+         allowed_emails: Map.get(meta, :allowed_emails, [])
        }}
     else
       {:error, :enoent} -> :not_found
@@ -51,7 +55,11 @@ defmodule Markdoc.Storage.DiskAdapter do
       "doc_id" => payload.doc_id,
       "created_at" => payload.created_at,
       "last_updated_at" => payload.last_updated_at,
-      "version" => payload.version
+      "version" => payload.version,
+      "owner_email" => Map.get(payload, :owner_email),
+      "owner_sub" => Map.get(payload, :owner_sub),
+      "sharing_mode" => serialize_sharing_mode(Map.get(payload, :sharing_mode)),
+      "allowed_emails" => Map.get(payload, :allowed_emails, [])
     }
 
     # Write to temp files first, then atomically rename
@@ -162,7 +170,7 @@ defmodule Markdoc.Storage.DiskAdapter do
          "created_at" => created_at,
          "last_updated_at" => last_updated_at,
          "version" => version
-       })
+       } = meta)
        when is_binary(doc_id) and is_integer(created_at) and is_integer(last_updated_at) and
               is_integer(version) do
     {:ok,
@@ -170,7 +178,11 @@ defmodule Markdoc.Storage.DiskAdapter do
        doc_id: doc_id,
        created_at: created_at,
        last_updated_at: last_updated_at,
-       version: version
+       version: version,
+       owner_email: Map.get(meta, "owner_email"),
+       owner_sub: Map.get(meta, "owner_sub"),
+       sharing_mode: parse_sharing_mode(Map.get(meta, "sharing_mode")),
+       allowed_emails: Map.get(meta, "allowed_emails", [])
      }}
   end
 
@@ -192,6 +204,20 @@ defmodule Markdoc.Storage.DiskAdapter do
   end
 
   defp normalize_history(_), do: {:error, :invalid_payload}
+
+  defp serialize_sharing_mode(nil), do: nil
+  defp serialize_sharing_mode(:only_me), do: "only_me"
+  defp serialize_sharing_mode(:specific_people), do: "specific_people"
+  defp serialize_sharing_mode(:authenticated_users), do: "authenticated_users"
+  defp serialize_sharing_mode(:public), do: "public"
+  defp serialize_sharing_mode(other), do: other
+
+  defp parse_sharing_mode(nil), do: nil
+  defp parse_sharing_mode("only_me"), do: :only_me
+  defp parse_sharing_mode("specific_people"), do: :specific_people
+  defp parse_sharing_mode("authenticated_users"), do: :authenticated_users
+  defp parse_sharing_mode("public"), do: :public
+  defp parse_sharing_mode(_), do: nil
 
   defp data_path(doc_id, opts) do
     dir = Keyword.fetch!(opts, :path)

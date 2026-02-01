@@ -7,12 +7,17 @@ defmodule Markdoc.Storage.Adapter do
   """
 
   @type doc_id :: String.t()
+  @type sharing_mode :: :only_me | :specific_people | :authenticated_users | :public | nil
   @type doc_payload :: %{
           doc_id: doc_id(),
           created_at: non_neg_integer(),
           last_updated_at: non_neg_integer(),
           history: [binary()],
-          version: pos_integer()
+          version: pos_integer(),
+          owner_email: String.t() | nil,
+          owner_sub: String.t() | nil,
+          sharing_mode: sharing_mode(),
+          allowed_emails: [String.t()]
         }
 
   @callback load(doc_id(), keyword()) ::

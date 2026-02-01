@@ -37,7 +37,12 @@ defmodule Markdoc.DocServer do
       :dirty?,
       :periodic_flush_timer,
       :idle_flush_timer,
-      :storage_backend
+      :storage_backend,
+      # Sharing/ownership fields
+      :owner_email,
+      :owner_sub,
+      :sharing_mode,
+      :allowed_emails
     ]
 
     @type t :: %__MODULE__{
@@ -52,7 +57,11 @@ defmodule Markdoc.DocServer do
             dirty?: boolean(),
             periodic_flush_timer: reference() | nil,
             idle_flush_timer: reference() | nil,
-            storage_backend: atom()
+            storage_backend: atom(),
+            owner_email: String.t() | nil,
+            owner_sub: String.t() | nil,
+            sharing_mode: :only_me | :specific_people | :authenticated_users | :public | nil,
+            allowed_emails: [String.t()]
           }
   end
 
@@ -107,6 +116,28 @@ defmodule Markdoc.DocServer do
     GenServer.call(Markdoc.DocRegistry.via_tuple(doc_id), :flush)
   end
 
+  @doc """
+  Gets the metadata (ownership/sharing info) for this document.
+  """
+  def get_metadata(doc_id) when is_binary(doc_id) do
+    GenServer.call(Markdoc.DocRegistry.via_tuple(doc_id), :get_metadata)
+  end
+
+  @doc """
+  Sets the owner of a document (only if not already set).
+  """
+  def set_owner(doc_id, email, sub) when is_binary(doc_id) do
+    GenServer.call(Markdoc.DocRegistry.via_tuple(doc_id), {:set_owner, email, sub})
+  end
+
+  @doc """
+  Updates sharing settings for a document.
+  Only the owner can update sharing settings.
+  """
+  def update_sharing(doc_id, owner_email, sharing_settings) when is_binary(doc_id) do
+    GenServer.call(Markdoc.DocRegistry.via_tuple(doc_id), {:update_sharing, owner_email, sharing_settings})
+  end
+
   ## Server Callbacks
 
   @impl true
@@ -117,7 +148,7 @@ defmodule Markdoc.DocServer do
     now = System.system_time(:second)
     storage_backend = Markdoc.Storage.backend()
 
-    {history, created_at, last_updated_at} =
+    {history, created_at, last_updated_at, owner_email, owner_sub, sharing_mode, allowed_emails} =
       case Markdoc.Storage.load(doc_id) do
         {:ok, payload} ->
           Logger.info("Loaded document from storage",
@@ -126,10 +157,18 @@ defmodule Markdoc.DocServer do
             backend: storage_backend
           )
 
-          {payload.history, payload.created_at, payload.last_updated_at}
+          {
+            payload.history,
+            payload.created_at,
+            payload.last_updated_at,
+            Map.get(payload, :owner_email),
+            Map.get(payload, :owner_sub),
+            Map.get(payload, :sharing_mode),
+            Map.get(payload, :allowed_emails, [])
+          }
 
         :not_found ->
-          {[], now, now}
+          {[], now, now, nil, nil, nil, []}
 
         {:error, reason} ->
           Logger.warning("Failed to load document from storage",
@@ -138,7 +177,7 @@ defmodule Markdoc.DocServer do
             reason: inspect(reason)
           )
 
-          {[], now, now}
+          {[], now, now, nil, nil, nil, []}
       end
 
     # Schedule periodic inactivity check
@@ -157,7 +196,11 @@ defmodule Markdoc.DocServer do
        dirty?: false,
        periodic_flush_timer: schedule_periodic_flush(),
        idle_flush_timer: nil,
-       storage_backend: storage_backend
+       storage_backend: storage_backend,
+       owner_email: owner_email,
+       owner_sub: owner_sub,
+       sharing_mode: sharing_mode,
+       allowed_emails: allowed_emails
      }}
   end
 
@@ -291,6 +334,82 @@ defmodule Markdoc.DocServer do
   end
 
   @impl true
+  def handle_call(:get_metadata, _from, state) do
+    metadata = %{
+      owner_email: state.owner_email,
+      owner_sub: state.owner_sub,
+      sharing_mode: state.sharing_mode,
+      allowed_emails: state.allowed_emails,
+      created_at: state.created_at,
+      last_updated_at: state.last_updated_at
+    }
+    {:reply, metadata, state}
+  end
+
+  @impl true
+  def handle_call({:set_owner, email, sub}, _from, state) do
+    if is_nil(state.owner_email) do
+      Logger.info("Setting document owner",
+        event: :owner_set,
+        owner_email: email
+      )
+
+      new_state = %{
+        state
+        | owner_email: email,
+          owner_sub: sub,
+          sharing_mode: :only_me,
+          dirty?: true
+      }
+
+      {:reply, :ok, new_state}
+    else
+      {:reply, {:error, :owner_already_set}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:update_sharing, requester_email, settings}, _from, state) do
+    cond do
+      is_nil(state.owner_email) ->
+        {:reply, {:error, :no_owner}, state}
+
+      state.owner_email != requester_email ->
+        Logger.warning("Unauthorized sharing update attempt",
+          event: :unauthorized_sharing_update,
+          requester: requester_email,
+          owner: state.owner_email
+        )
+        {:reply, {:error, :unauthorized}, state}
+
+      true ->
+        sharing_mode = Map.get(settings, :sharing_mode, state.sharing_mode)
+        allowed_emails = Map.get(settings, :allowed_emails, state.allowed_emails)
+
+        # Validate allowed_emails list size (max 50)
+        allowed_emails = Enum.take(allowed_emails, 50)
+
+        # Validate email format
+        allowed_emails = Enum.filter(allowed_emails, &valid_email?/1)
+
+        Logger.info("Updating sharing settings",
+          event: :sharing_updated,
+          sharing_mode: sharing_mode,
+          allowed_emails_count: length(allowed_emails)
+        )
+
+        new_state = %{
+          state
+          | sharing_mode: sharing_mode,
+            allowed_emails: allowed_emails,
+            dirty?: true
+        }
+
+        {:reply, :ok, new_state}
+    end
+  end
+
+  @impl true
   def handle_info(:check_inactivity, state) do
     # Periodic check for inactivity
     if MapSet.size(state.users) == 0 do
@@ -379,7 +498,11 @@ defmodule Markdoc.DocServer do
         created_at: state.created_at,
         last_updated_at: state.last_updated_at,
         history: state.history,
-        version: 1
+        version: 1,
+        owner_email: state.owner_email,
+        owner_sub: state.owner_sub,
+        sharing_mode: state.sharing_mode,
+        allowed_emails: state.allowed_emails
       }
 
       case Markdoc.Storage.persist(payload) do
@@ -445,4 +568,16 @@ defmodule Markdoc.DocServer do
         :ok
     end
   end
+
+  defp valid_email?(email) when is_binary(email) do
+    # Basic email validation - must contain @ and have content before and after
+    case String.split(email, "@") do
+      [local, domain] when byte_size(local) > 0 and byte_size(domain) > 2 ->
+        String.contains?(domain, ".")
+      _ ->
+        false
+    end
+  end
+
+  defp valid_email?(_), do: false
 end

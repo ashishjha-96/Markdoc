@@ -147,3 +147,13 @@ if env_backend == :s3 do
 
   config :ex_aws, :s3, s3_opts
 end
+
+# Cloudflare Zero Trust authentication configuration
+config :markdoc, :auth,
+  cloudflare_team_domain: System.get_env("CLOUDFLARE_TEAM_DOMAIN", "markdoc.cloudflareaccess.com"),
+  cloudflare_aud: System.get_env("CLOUDFLARE_AUD"),
+  private_domain: System.get_env("PRIVATE_DOMAIN", "private.markdoc.live"),
+  public_domain: System.get_env("PUBLIC_DOMAIN", "markdoc.live"),
+  # Dev mode: set MARKDOC_AUTH_DEV_MODE=true and MARKDOC_AUTH_DEV_EMAIL=your@email.com
+  dev_mode: System.get_env("MARKDOC_AUTH_DEV_MODE") == "true",
+  dev_email: System.get_env("MARKDOC_AUTH_DEV_EMAIL", "dev@localhost")

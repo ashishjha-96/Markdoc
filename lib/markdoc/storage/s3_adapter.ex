@@ -35,7 +35,11 @@ defmodule Markdoc.Storage.S3Adapter do
       "created_at" => payload.created_at,
       "last_updated_at" => payload.last_updated_at,
       "history" => Enum.map(payload.history, &Base.encode64/1),
-      "version" => payload.version
+      "version" => payload.version,
+      "owner_email" => Map.get(payload, :owner_email),
+      "owner_sub" => Map.get(payload, :owner_sub),
+      "sharing_mode" => serialize_sharing_mode(Map.get(payload, :sharing_mode)),
+      "allowed_emails" => Map.get(payload, :allowed_emails, [])
     }
 
     with {:ok, data_body} <- Jason.encode(serialized),
@@ -145,7 +149,7 @@ defmodule Markdoc.Storage.S3Adapter do
          "last_updated_at" => last_updated_at,
          "history" => history,
          "version" => version
-       })
+       } = data)
        when is_binary(doc_id) and is_integer(created_at) and is_integer(last_updated_at) and
               is_list(history) and is_integer(version) do
     case decode_history(history) do
@@ -156,7 +160,11 @@ defmodule Markdoc.Storage.S3Adapter do
            created_at: created_at,
            last_updated_at: last_updated_at,
            history: decoded_history,
-           version: version
+           version: version,
+           owner_email: Map.get(data, "owner_email"),
+           owner_sub: Map.get(data, "owner_sub"),
+           sharing_mode: parse_sharing_mode(Map.get(data, "sharing_mode")),
+           allowed_emails: Map.get(data, "allowed_emails", [])
          }}
 
       error ->
@@ -180,6 +188,20 @@ defmodule Markdoc.Storage.S3Adapter do
       error -> error
     end
   end
+
+  defp serialize_sharing_mode(nil), do: nil
+  defp serialize_sharing_mode(:only_me), do: "only_me"
+  defp serialize_sharing_mode(:specific_people), do: "specific_people"
+  defp serialize_sharing_mode(:authenticated_users), do: "authenticated_users"
+  defp serialize_sharing_mode(:public), do: "public"
+  defp serialize_sharing_mode(other), do: other
+
+  defp parse_sharing_mode(nil), do: nil
+  defp parse_sharing_mode("only_me"), do: :only_me
+  defp parse_sharing_mode("specific_people"), do: :specific_people
+  defp parse_sharing_mode("authenticated_users"), do: :authenticated_users
+  defp parse_sharing_mode("public"), do: :public
+  defp parse_sharing_mode(_), do: nil
 
   defp object_key(doc_id, opts) do
     ensure_trailing_slash(Keyword.get(opts, :prefix, "documents/")) <> "#{doc_id}.json"

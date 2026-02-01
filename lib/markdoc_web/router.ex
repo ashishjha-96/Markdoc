@@ -14,12 +14,24 @@ defmodule MarkdocWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :cloudflare_auth do
+    plug MarkdocWeb.Plugs.CloudflareAuth
+  end
+
   # API routes for external integrations (VSCode extension, etc.)
   scope "/api", MarkdocWeb do
     pipe_through :api
 
     post "/import", ImportController, :create
     get "/import/:doc_id", ImportController, :show
+  end
+
+  # API routes requiring Cloudflare authentication
+  scope "/api", MarkdocWeb do
+    pipe_through [:api, :cloudflare_auth]
+
+    get "/docs/:doc_id/sharing", SharingController, :show
+    put "/docs/:doc_id/sharing", SharingController, :update
   end
 
   scope "/", MarkdocWeb do

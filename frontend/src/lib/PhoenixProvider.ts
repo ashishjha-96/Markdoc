@@ -13,13 +13,41 @@ export interface UserInfo {
   color: string;
 }
 
+export interface DocumentInfo {
+  isOwner: boolean;
+  sharingMode: string | null;
+  isPrivateDomain: boolean;
+}
+
+/**
+ * Detects if the current domain is the private domain.
+ */
+export function isPrivateDomain(): boolean {
+  const hostname = window.location.hostname;
+  // Check if hostname starts with 'private.' or matches the private domain pattern
+  return hostname.startsWith("private.") || hostname === "private.markdoc.live";
+}
+
+/**
+ * Gets the public domain URL for sharing.
+ */
+export function getPublicDomain(): string {
+  if (isPrivateDomain()) {
+    // Convert private.markdoc.live to markdoc.live
+    return window.location.hostname.replace(/^private\./, "");
+  }
+  return window.location.hostname;
+}
+
 export class PhoenixProvider {
   public doc: Y.Doc;
   public socket: Socket;
   public channel: Channel;
+  public documentInfo: DocumentInfo | null = null;
   private synced: boolean = false;
   private updateHandler: ((update: Uint8Array, origin: any) => void) | null =
     null;
+  private documentInfoCallbacks: ((info: DocumentInfo) => void)[] = [];
 
   constructor(
     docId: string,
@@ -80,7 +108,7 @@ export class PhoenixProvider {
     // 4. Join the channel and handle initial sync
     this.channel
       .join()
-      .receive("ok", (resp: { history: number[][] }) =>
+      .receive("ok", (resp: { history: number[][]; is_owner?: boolean; sharing_mode?: string | null; is_private_domain?: boolean }) =>
         this.handleInitialSync(resp)
       )
       .receive("error", (resp: any) => {
@@ -144,7 +172,17 @@ export class PhoenixProvider {
     this.doc.on("update", this.updateHandler);
   }
 
-  private handleInitialSync(resp: { history: number[][] }) {
+  private handleInitialSync(resp: { history: number[][]; is_owner?: boolean; sharing_mode?: string | null; is_private_domain?: boolean }) {
+    // Store document info
+    this.documentInfo = {
+      isOwner: resp.is_owner ?? false,
+      sharingMode: resp.sharing_mode ?? null,
+      isPrivateDomain: resp.is_private_domain ?? false,
+    };
+
+    // Notify callbacks
+    this.documentInfoCallbacks.forEach(cb => cb(this.documentInfo!));
+
     if (resp.history && resp.history.length > 0) {
       console.log(`📦 Received ${resp.history.length} updates from server`);
 
@@ -173,6 +211,16 @@ export class PhoenixProvider {
    */
   public isSynced(): boolean {
     return this.synced;
+  }
+
+  /**
+   * Register a callback for when document info is available
+   */
+  public onDocumentInfo(callback: (info: DocumentInfo) => void) {
+    if (this.documentInfo) {
+      callback(this.documentInfo);
+    }
+    this.documentInfoCallbacks.push(callback);
   }
 
   /**

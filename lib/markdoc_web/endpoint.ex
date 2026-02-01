@@ -17,7 +17,7 @@ defmodule MarkdocWeb.Endpoint do
 
   # WebSocket for document collaboration
   socket "/socket", MarkdocWeb.UserSocket,
-    websocket: true,
+    websocket: [connect_info: [:x_headers, :peer_data]],
     longpoll: false
 
   # Serve at "/" the static files from "priv/static" directory.

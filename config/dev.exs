@@ -74,3 +74,18 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# Development storage - use disk backend
+config :markdoc, :storage,
+  backend: :disk,
+  disk_path: "storage/documents"
+
+# Cloudflare Zero Trust auth - dev mode enabled
+# In dev mode, authentication is bypassed and a mock user is used
+# To test as different users, change dev_email
+config :markdoc, :auth,
+  dev_mode: true,
+  dev_email: "dev@localhost",
+  # Treat localhost as the private domain for testing
+  private_domain: "localhost",
+  public_domain: "localhost"

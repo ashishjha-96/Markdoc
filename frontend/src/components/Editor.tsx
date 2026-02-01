@@ -17,7 +17,7 @@ import { nanoid } from "nanoid";
 import { schema } from "../lib/editorSchema";
 import { setThemeMode } from "../lib/syntaxHighlighting";
 import { PhoenixProvider } from "../lib/PhoenixProvider";
-import type { UserInfo } from "../lib/PhoenixProvider";
+import type { UserInfo, DocumentInfo } from "../lib/PhoenixProvider";
 import { UserPresence } from "./UserPresence";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { NamePrompt } from "./NamePrompt";
@@ -27,11 +27,13 @@ import { ThemeToggle } from "./ThemeToggle";
 import { SearchBar } from "./SearchBar";
 import { KeyboardShortcutsMenu } from "./KeyboardShortcutsMenu";
 import { TableOfContents } from "./TableOfContents";
+import { SharingSettings } from "./SharingSettings";
 import { useTheme } from "../contexts/ThemeContext";
 import { useCursors } from "../hooks/useCursors";
 import { usePresence } from "../hooks/usePresence";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useCodeBlockAutoDetect } from "../hooks/useCodeBlockAutoDetect";
+import { useSharingSettings } from "../hooks/useSharingSettings";
 import { generateDocId } from "../lib/generateDocId";
 import { requestImport, onImportMarkdown, fetchPendingImport } from "../lib/importBridge";
 import { EditorContext } from "./chat/ChatBlock";
@@ -167,6 +169,8 @@ export function Editor({ docId }: EditorProps) {
   const [provider, setProvider] = useState<PhoenixProvider | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [documentInfo, setDocumentInfo] = useState<DocumentInfo | null>(null);
+  const [showSharingModal, setShowSharingModal] = useState(false);
   const { mode } = useTheme();
 
   // Update syntax highlighting theme before editor creation
@@ -268,17 +272,32 @@ export function Editor({ docId }: EditorProps) {
   // Enable auto-detection of code block languages
   useCodeBlockAutoDetect(editor);
 
+  // Sharing settings hook
+  const {
+    settings: sharingSettings,
+    updateSettings: updateSharingSettings,
+  } = useSharingSettings({
+    docId,
+    isOwner: documentInfo?.isOwner ?? false,
+    isPrivateDomain: documentInfo?.isPrivateDomain ?? false,
+  });
+
   // Initialize Phoenix provider only after we have user info
   useEffect(() => {
     if (!userInfo) return;
 
-    console.log(`🚀 Initializing editor for document: ${docId}`);
+    console.log(`Initializing editor for document: ${docId}`);
 
     const phoenixProvider = new PhoenixProvider(docId, doc, userInfo);
     setProvider(phoenixProvider);
 
+    // Listen for document info from the channel
+    phoenixProvider.onDocumentInfo((info) => {
+      setDocumentInfo(info);
+    });
+
     return () => {
-      console.log(`🛑 Cleaning up editor for document: ${docId}`);
+      console.log(`Cleaning up editor for document: ${docId}`);
       phoenixProvider.destroy();
     };
   }, [docId, doc, userInfo]);
@@ -567,6 +586,35 @@ export function Editor({ docId }: EditorProps) {
               {/* Theme Toggle */}
               <ThemeToggle />
 
+              {/* Share Button - only for owners on private domain */}
+              {documentInfo?.isOwner && documentInfo?.isPrivateDomain && (
+                <button
+                  onClick={() => setShowSharingModal(true)}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "white",
+                    backgroundColor: "#2da44e",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#238636";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#2da44e";
+                  }}
+                >
+                  Share
+                </button>
+              )}
+
               {/* Combined Menu (New Document + Export) */}
               {editor && (
                 <ExportMenu
@@ -640,6 +688,17 @@ export function Editor({ docId }: EditorProps) {
 
         {/* Table of Contents */}
         {editor && <TableOfContents editor={editor} />}
+
+        {/* Sharing Settings Modal */}
+        {documentInfo?.isOwner && documentInfo?.isPrivateDomain && (
+          <SharingSettings
+            docId={docId}
+            isOpen={showSharingModal}
+            onClose={() => setShowSharingModal(false)}
+            settings={sharingSettings}
+            onSave={updateSharingSettings}
+          />
+        )}
       </div>
     </>
   );
