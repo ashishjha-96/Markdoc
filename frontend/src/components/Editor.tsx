@@ -171,6 +171,7 @@ export function Editor({ docId }: EditorProps) {
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [documentInfo, setDocumentInfo] = useState<DocumentInfo | null>(null);
   const [showSharingModal, setShowSharingModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { mode } = useTheme();
 
   // Update syntax highlighting theme before editor creation
@@ -209,6 +210,21 @@ export function Editor({ docId }: EditorProps) {
       color: userColor,
     });
     setShowNamePrompt(false);
+  };
+
+  // Handle document purge
+  const handlePurgeDocument = async () => {
+    if (!provider) return;
+
+    try {
+      await provider.purgeDocument();
+      // Redirect to home after successful purge
+      window.location.pathname = "/";
+    } catch (error) {
+      console.error("Failed to purge document:", error);
+      alert("Failed to delete document. You may not have permission.");
+    }
+    setShowDeleteConfirm(false);
   };
 
   // Create BlockNote editor with Y.js collaboration
@@ -294,6 +310,11 @@ export function Editor({ docId }: EditorProps) {
     // Listen for document info from the channel
     phoenixProvider.onDocumentInfo((info) => {
       setDocumentInfo(info);
+    });
+
+    // Listen for document purge events (from other users)
+    phoenixProvider.onDocumentPurged(() => {
+      window.location.pathname = "/";
     });
 
     return () => {
@@ -615,6 +636,44 @@ export function Editor({ docId }: EditorProps) {
                 </button>
               )}
 
+              {/* Delete Button - for owners or public documents */}
+              {(documentInfo?.isOwner || (!documentInfo?.isPrivateDomain && !documentInfo?.isOwner)) && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  title="Delete document"
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: "14px",
+                    color: mode === "dark" ? "#f85149" : "#cf222e",
+                    backgroundColor: "transparent",
+                    border: `1px solid ${mode === "dark" ? "#f8514950" : "#cf222e50"}`,
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    transition: "background-color 0.2s, border-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = mode === "dark" ? "#f8514920" : "#cf222e10";
+                    e.currentTarget.style.borderColor = mode === "dark" ? "#f85149" : "#cf222e";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.borderColor = mode === "dark" ? "#f8514950" : "#cf222e50";
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                  >
+                    <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
+                  </svg>
+                </button>
+              )}
+
               {/* Combined Menu (New Document + Export) */}
               {editor && (
                 <ExportMenu
@@ -698,6 +757,108 @@ export function Editor({ docId }: EditorProps) {
             settings={sharingSettings}
             onSave={updateSharingSettings}
           />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <div
+              style={{
+                backgroundColor: mode === "dark" ? "#161b22" : "white",
+                borderRadius: "12px",
+                padding: "24px",
+                maxWidth: "400px",
+                width: "90%",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+                border: `1px solid ${mode === "dark" ? "#30363d" : "#d0d7de"}`,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: "20px",
+                  fontWeight: 600,
+                  color: mode === "dark" ? "#f85149" : "#cf222e",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
+                </svg>
+                Delete Document
+              </h2>
+              <p
+                style={{
+                  margin: "0 0 24px 0",
+                  fontSize: "14px",
+                  color: mode === "dark" ? "#8b949e" : "#57606a",
+                  lineHeight: 1.5,
+                }}
+              >
+                Are you sure you want to permanently delete this document? This action cannot be undone and all content will be lost.
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: mode === "dark" ? "#c9d1d9" : "#24292f",
+                    backgroundColor: mode === "dark" ? "#21262d" : "#f6f8fa",
+                    border: `1px solid ${mode === "dark" ? "#30363d" : "#d0d7de"}`,
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handlePurgeDocument}
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "white",
+                    backgroundColor: mode === "dark" ? "#da3633" : "#cf222e",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </>

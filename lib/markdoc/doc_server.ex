@@ -138,6 +138,15 @@ defmodule Markdoc.DocServer do
     GenServer.call(Markdoc.DocRegistry.via_tuple(doc_id), {:update_sharing, owner_email, sharing_settings})
   end
 
+  @doc """
+  Purges a document completely - deletes from storage and terminates the process.
+  Only the owner can purge a document.
+  Returns :ok on success, {:error, reason} on failure.
+  """
+  def purge(doc_id, requester_email) when is_binary(doc_id) do
+    GenServer.call(Markdoc.DocRegistry.via_tuple(doc_id), {:purge, requester_email})
+  end
+
   ## Server Callbacks
 
   @impl true
@@ -410,6 +419,27 @@ defmodule Markdoc.DocServer do
   end
 
   @impl true
+  def handle_call({:purge, requester_email}, _from, state) do
+    cond do
+      # Allow purging documents without owner (public documents)
+      is_nil(state.owner_email) ->
+        do_purge(state)
+
+      # Only owner can purge owned documents
+      state.owner_email == requester_email ->
+        do_purge(state)
+
+      true ->
+        Logger.warning("Unauthorized purge attempt",
+          event: :unauthorized_purge,
+          requester: requester_email,
+          owner: state.owner_email
+        )
+        {:reply, {:error, :unauthorized}, state}
+    end
+  end
+
+  @impl true
   def handle_info(:check_inactivity, state) do
     # Periodic check for inactivity
     if MapSet.size(state.users) == 0 do
@@ -580,4 +610,30 @@ defmodule Markdoc.DocServer do
   end
 
   defp valid_email?(_), do: false
+
+  defp do_purge(state) do
+    Logger.info("Purging document",
+      event: :document_purge,
+      doc_id: state.doc_id
+    )
+
+    # Delete from storage
+    case Markdoc.Storage.delete(state.doc_id) do
+      :ok ->
+        Logger.info("Document purged from storage",
+          event: :document_purged,
+          doc_id: state.doc_id
+        )
+        # Stop the GenServer after successful deletion
+        {:stop, :normal, :ok, state}
+
+      {:error, reason} ->
+        Logger.error("Failed to purge document from storage",
+          event: :purge_failed,
+          doc_id: state.doc_id,
+          reason: inspect(reason)
+        )
+        {:reply, {:error, :storage_error}, state}
+    end
+  end
 end

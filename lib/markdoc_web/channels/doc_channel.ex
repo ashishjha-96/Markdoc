@@ -33,51 +33,62 @@ defmodule MarkdocWeb.DocChannel do
   alias Markdoc.{DocServer, DocSupervisor, DocRegistry}
   alias MarkdocWeb.Presence
 
+  # Valid doc ID pattern: 21 characters, URL-safe (A-Za-z0-9_-)
+  @doc_id_pattern ~r/^[A-Za-z0-9_-]{21}$/
+
   @impl true
   def join("doc:" <> doc_id, params, socket) do
     Logger.metadata(doc_id: doc_id)
     Logger.info("Client joining document", event: :client_join, doc_id: doc_id)
 
-    auth_user = socket.assigns[:auth_user] || %{authenticated: false, domain: :public}
+    # Validate doc ID format first
+    unless valid_doc_id?(doc_id) do
+      Logger.warning("Invalid document ID format",
+        event: :invalid_doc_id,
+        doc_id: doc_id
+      )
+      {:error, %{reason: "invalid_doc_id"}}
+    else
+      auth_user = socket.assigns[:auth_user] || %{authenticated: false, domain: :public}
 
-    # Ensure document process exists
-    ensure_doc_exists(doc_id)
+      # Ensure document process exists
+      ensure_doc_exists(doc_id)
 
-    # Get document metadata for authorization
-    metadata = DocServer.get_metadata(doc_id)
+      # Get document metadata for authorization
+      metadata = DocServer.get_metadata(doc_id)
 
-    # Check authorization
-    case authorize(auth_user, metadata) do
-      :ok ->
-        # Set owner if new private doc
-        if is_nil(metadata.owner_email) and auth_user.domain == :private and auth_user.authenticated do
-          DocServer.set_owner(doc_id, auth_user.email, auth_user.sub)
-        end
+      # Check authorization
+      case authorize(auth_user, metadata) do
+        :ok ->
+          # Set owner if new private doc
+          if is_nil(metadata.owner_email) and auth_user.domain == :private and auth_user.authenticated do
+            DocServer.set_owner(doc_id, auth_user.email, auth_user.sub)
+          end
 
-        # Register this channel with the document server
-        DocServer.join(doc_id, self())
+          # Register this channel with the document server
+          DocServer.join(doc_id, self())
 
-        # Fetch history
-        history = DocServer.get_history(doc_id)
+          # Fetch history
+          history = DocServer.get_history(doc_id)
 
-        Logger.debug("Document history fetched",
-          event: :history_fetched,
-          history_size: length(history)
-        )
+          Logger.debug("Document history fetched",
+            event: :history_fetched,
+            history_size: length(history)
+          )
 
-        # Convert binary history to arrays for JSON transport
-        history_arrays = Enum.map(history, &:erlang.binary_to_list/1)
+          # Convert binary history to arrays for JSON transport
+          history_arrays = Enum.map(history, &:erlang.binary_to_list/1)
 
-        # Assign doc_id to socket for later use
-        socket = assign(socket, :doc_id, doc_id)
+          # Assign doc_id to socket for later use
+          socket = assign(socket, :doc_id, doc_id)
 
-        # Generate a unique user_id for this connection
-        user_id = "user_#{:erlang.phash2(self())}"
-        socket = assign(socket, :user_id, user_id)
+          # Generate a unique user_id for this connection
+          user_id = "user_#{:erlang.phash2(self())}"
+          socket = assign(socket, :user_id, user_id)
 
-        # Extract user info from params (sent by client)
-        user_info = params["user"] || %{}
-        user_name = user_info["name"] || "Anonymous"
+          # Extract user info from params (sent by client)
+          user_info = params["user"] || %{}
+          user_name = user_info["name"] || "Anonymous"
         user_color = user_info["color"] || generate_random_color()
 
         socket = assign(socket, :user_name, user_name)
@@ -110,6 +121,7 @@ defmodule MarkdocWeb.DocChannel do
           user_email: auth_user[:email]
         )
         {:error, %{reason: reason}}
+      end
     end
   end
 
@@ -194,6 +206,47 @@ defmodule MarkdocWeb.DocChannel do
     })
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_in("purge", _params, socket) do
+    doc_id = socket.assigns.doc_id
+    auth_user = socket.assigns[:auth_user] || %{authenticated: false, email: nil}
+
+    Logger.info("Purge request received",
+      event: :purge_request,
+      doc_id: doc_id,
+      requester: auth_user[:email]
+    )
+
+    case DocServer.purge(doc_id, auth_user[:email]) do
+      :ok ->
+        # Broadcast to all clients that the document was purged
+        broadcast!(socket, "document_purged", %{})
+
+        Logger.info("Document purged successfully",
+          event: :document_purged,
+          doc_id: doc_id
+        )
+
+        {:reply, {:ok, %{status: "purged"}}, socket}
+
+      {:error, :unauthorized} ->
+        Logger.warning("Unauthorized purge attempt",
+          event: :purge_unauthorized,
+          doc_id: doc_id,
+          requester: auth_user[:email]
+        )
+        {:reply, {:error, %{reason: "unauthorized"}}, socket}
+
+      {:error, reason} ->
+        Logger.error("Purge failed",
+          event: :purge_failed,
+          doc_id: doc_id,
+          reason: inspect(reason)
+        )
+        {:reply, {:error, %{reason: "failed"}}, socket}
+    end
   end
 
   @impl true
@@ -304,4 +357,10 @@ defmodule MarkdocWeb.DocChannel do
   defp generate_random_color do
     "#" <> (3 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower))
   end
+
+  defp valid_doc_id?(doc_id) when is_binary(doc_id) do
+    Regex.match?(@doc_id_pattern, doc_id)
+  end
+
+  defp valid_doc_id?(_), do: false
 end

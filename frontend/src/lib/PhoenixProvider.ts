@@ -48,6 +48,7 @@ export class PhoenixProvider {
   private updateHandler: ((update: Uint8Array, origin: any) => void) | null =
     null;
   private documentInfoCallbacks: ((info: DocumentInfo) => void)[] = [];
+  private purgeCallbacks: (() => void)[] = [];
 
   constructor(
     docId: string,
@@ -156,6 +157,12 @@ export class PhoenixProvider {
       console.log("👥 Presence diff:", diff);
     });
 
+    // Listen for document purge notification
+    this.channel.on("document_purged", () => {
+      console.log("🗑️ Document was purged");
+      this.purgeCallbacks.forEach(cb => cb());
+    });
+
     // Listen for local document changes
     this.updateHandler = (update: Uint8Array, origin: any) => {
       // Don't send updates that came from the server (they already have it)
@@ -228,6 +235,36 @@ export class PhoenixProvider {
    */
   public updateCursor(position: { blockId: string; offset: number }) {
     this.channel.push("cursor_move", { position });
+  }
+
+  /**
+   * Purge (delete) the document from storage and memory
+   * Returns a promise that resolves on success or rejects on failure
+   */
+  public purgeDocument(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.channel
+        .push("purge", {})
+        .receive("ok", () => {
+          console.log("🗑️ Document purged successfully");
+          resolve();
+        })
+        .receive("error", (resp: { reason: string }) => {
+          console.error("❌ Failed to purge document:", resp.reason);
+          reject(new Error(resp.reason));
+        })
+        .receive("timeout", () => {
+          console.error("⏱️ Purge request timeout");
+          reject(new Error("timeout"));
+        });
+    });
+  }
+
+  /**
+   * Register a callback for when the document is purged
+   */
+  public onDocumentPurged(callback: () => void) {
+    this.purgeCallbacks.push(callback);
   }
 
   /**
