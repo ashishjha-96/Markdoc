@@ -11,6 +11,9 @@ defmodule MarkdocWeb.SharingController do
 
   alias Markdoc.{DocServer, DocSupervisor, DocRegistry}
 
+  # Valid doc ID pattern: 21 characters, URL-safe (A-Za-z0-9_-)
+  @doc_id_pattern ~r/^[A-Za-z0-9_-]{21}$/
+
   @doc """
   GET /api/docs/:doc_id/sharing
 
@@ -19,7 +22,8 @@ defmodule MarkdocWeb.SharingController do
   def show(conn, %{"doc_id" => doc_id}) do
     auth_user = conn.assigns[:auth_user]
 
-    with :ok <- ensure_authenticated(auth_user),
+    with :ok <- validate_doc_id(doc_id),
+         :ok <- ensure_authenticated(auth_user),
          :ok <- ensure_doc_exists(doc_id),
          metadata <- DocServer.get_metadata(doc_id),
          :ok <- ensure_owner(auth_user, metadata) do
@@ -30,6 +34,11 @@ defmodule MarkdocWeb.SharingController do
         owner_email: metadata.owner_email
       })
     else
+      {:error, :invalid_doc_id} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "bad_request", reason: "invalid_doc_id"})
+
       {:error, :not_authenticated} ->
         conn
         |> put_status(:unauthorized)
@@ -59,7 +68,8 @@ defmodule MarkdocWeb.SharingController do
   def update(conn, %{"doc_id" => doc_id} = params) do
     auth_user = conn.assigns[:auth_user]
 
-    with :ok <- ensure_authenticated(auth_user),
+    with :ok <- validate_doc_id(doc_id),
+         :ok <- ensure_authenticated(auth_user),
          :ok <- ensure_doc_exists(doc_id),
          metadata <- DocServer.get_metadata(doc_id),
          :ok <- ensure_owner(auth_user, metadata),
@@ -85,6 +95,11 @@ defmodule MarkdocWeb.SharingController do
           |> json(%{error: "update_failed", reason: inspect(reason)})
       end
     else
+      {:error, :invalid_doc_id} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "bad_request", reason: "invalid_doc_id"})
+
       {:error, :not_authenticated} ->
         conn
         |> put_status(:unauthorized)
@@ -113,6 +128,16 @@ defmodule MarkdocWeb.SharingController do
   end
 
   ## Private Functions
+
+  defp validate_doc_id(doc_id) when is_binary(doc_id) do
+    if Regex.match?(@doc_id_pattern, doc_id) do
+      :ok
+    else
+      {:error, :invalid_doc_id}
+    end
+  end
+
+  defp validate_doc_id(_), do: {:error, :invalid_doc_id}
 
   defp ensure_authenticated(%{authenticated: true}), do: :ok
   defp ensure_authenticated(_), do: {:error, :not_authenticated}

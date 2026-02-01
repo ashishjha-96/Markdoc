@@ -16,7 +16,9 @@ defmodule Markdoc.PendingImports do
   @table_name :pending_imports
   @ttl_ms :timer.minutes(5)
   @cleanup_interval_ms :timer.minutes(1)
-  @doc_id_length 8
+  # Must match nanoid format: 21 characters, URL-safe (A-Za-z0-9_-)
+  @doc_id_length 21
+  @doc_id_alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
   # Client API
 
@@ -92,10 +94,17 @@ defmodule Markdoc.PendingImports do
   # Private Functions
 
   defp generate_doc_id do
-    @doc_id_length
-    |> :crypto.strong_rand_bytes()
-    |> Base.url_encode64(padding: false)
-    |> binary_part(0, @doc_id_length)
+    alphabet = @doc_id_alphabet
+    alphabet_size = byte_size(alphabet)
+
+    1..@doc_id_length
+    |> Enum.map(fn _ ->
+      # Generate random index into alphabet
+      <<random_byte>> = :crypto.strong_rand_bytes(1)
+      index = rem(random_byte, alphabet_size)
+      :binary.at(alphabet, index)
+    end)
+    |> List.to_string()
   end
 
   defp schedule_cleanup do

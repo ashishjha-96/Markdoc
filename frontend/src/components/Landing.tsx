@@ -1,7 +1,7 @@
 /**
  * Landing Component
  *
- * First screen shown when visiting root path '/'.
+ * First screen shown when visiting root path '/' or an invalid document ID.
  * Collects username and redirects to a new document with random ID.
  */
 
