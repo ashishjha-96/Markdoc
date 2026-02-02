@@ -54,6 +54,7 @@ export function ExportMenu({ editor, docId, onNewDocument, yDoc }: ExportMenuPro
           backgroundColor: "#646cff",
           borderRadius: "6px",
           overflow: "hidden",
+          height: "36px",
           transition: "background-color 0.2s",
         }}
       >
@@ -61,7 +62,7 @@ export function ExportMenu({ editor, docId, onNewDocument, yDoc }: ExportMenuPro
         <button
           onClick={handleNewDocument}
           style={{
-            padding: "6px 8px",
+            padding: "0 8px 0 10px",
             fontSize: "14px",
             fontWeight: 600,
             color: "white",
@@ -110,7 +111,7 @@ export function ExportMenu({ editor, docId, onNewDocument, yDoc }: ExportMenuPro
         <button
           onClick={() => setIsOpen(!isOpen)}
           style={{
-            padding: "6px 12px",
+            padding: "0 10px",
             backgroundColor: "transparent",
             border: "none",
             cursor: "pointer",

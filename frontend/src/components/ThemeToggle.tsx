@@ -15,8 +15,9 @@ export function ThemeToggle() {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "6px",
-        padding: "8px 12px",
+        justifyContent: "center",
+        padding: "0 10px",
+        height: "36px",
         backgroundColor: mode === "dark" ? "#2d333b" : "#f6f8fa",
         color: mode === "dark" ? "#e6edf3" : "#24292f",
         border: "1px solid",

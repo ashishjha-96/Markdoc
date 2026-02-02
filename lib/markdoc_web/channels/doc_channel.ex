@@ -60,10 +60,14 @@ defmodule MarkdocWeb.DocChannel do
       # Check authorization
       case authorize(auth_user, metadata) do
         :ok ->
-          # Set owner if new private doc
-          if is_nil(metadata.owner_email) and auth_user.domain == :private and auth_user.authenticated do
-            DocServer.set_owner(doc_id, auth_user.email, auth_user.sub)
-          end
+          # Set owner if new private doc and track if we just became owner
+          just_became_owner =
+            if is_nil(metadata.owner_email) and auth_user.domain == :private and auth_user.authenticated do
+              DocServer.set_owner(doc_id, auth_user.email, auth_user.sub)
+              true
+            else
+              false
+            end
 
           # Register this channel with the document server
           DocServer.join(doc_id, self())
@@ -89,30 +93,33 @@ defmodule MarkdocWeb.DocChannel do
           # Extract user info from params (sent by client)
           user_info = params["user"] || %{}
           user_name = user_info["name"] || "Anonymous"
-        user_color = user_info["color"] || generate_random_color()
+          user_color = user_info["color"] || generate_random_color()
 
-        socket = assign(socket, :user_name, user_name)
-        socket = assign(socket, :user_color, user_color)
+          socket = assign(socket, :user_name, user_name)
+          socket = assign(socket, :user_color, user_color)
 
-        # Check if user is the owner
-        is_owner = auth_user.email != nil and auth_user.email == metadata.owner_email
+          # Check if user is the owner (either already was, or just became)
+          is_owner = just_became_owner or (auth_user.email != nil and auth_user.email == metadata.owner_email)
 
-        Logger.info("User joining document",
-          event: :user_join,
-          user_name: user_name,
-          user_color: user_color,
-          is_owner: is_owner
-        )
+          Logger.info("User joining document",
+            event: :user_join,
+            user_name: user_name,
+            user_color: user_color,
+            is_owner: is_owner
+          )
 
-        # Track presence after join (send message to self)
-        send(self(), :after_join)
+          # Track presence after join (send message to self)
+          send(self(), :after_join)
 
-        {:ok, %{
-          history: history_arrays,
-          is_owner: is_owner,
-          sharing_mode: metadata.sharing_mode,
-          is_private_domain: auth_user.domain == :private
-        }, socket}
+          # Get current sharing mode (may have been set with ownership)
+          current_sharing_mode = if just_became_owner, do: :only_me, else: metadata.sharing_mode
+
+          {:ok, %{
+            history: history_arrays,
+            is_owner: is_owner,
+            sharing_mode: current_sharing_mode,
+            is_private_domain: auth_user.domain == :private
+          }, socket}
 
       {:error, reason} ->
         Logger.warning("Authorization denied for document",

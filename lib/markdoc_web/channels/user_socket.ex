@@ -18,6 +18,14 @@ defmodule MarkdocWeb.UserSocket do
 
   @impl true
   def connect(_params, socket, connect_info) do
+    # Debug: log what headers we're receiving
+    headers = Map.get(connect_info, :x_headers, [])
+    Logger.info("Socket connect_info",
+      x_headers_count: length(headers),
+      has_cookie: Enum.any?(headers, fn {k, _} -> k == "cookie" end),
+      headers: inspect(Enum.map(headers, fn {k, _v} -> k end))
+    )
+
     # Check if CF_Authorization cookie is present - if so, authenticate
     case try_cloudflare_auth(connect_info) do
       {:ok, user} ->

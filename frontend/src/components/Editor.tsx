@@ -612,7 +612,8 @@ export function Editor({ docId }: EditorProps) {
                 <button
                   onClick={() => setShowSharingModal(true)}
                   style={{
-                    padding: "6px 12px",
+                    padding: "0 12px",
+                    height: "36px",
                     fontSize: "14px",
                     fontWeight: 500,
                     color: "white",
@@ -642,7 +643,8 @@ export function Editor({ docId }: EditorProps) {
                   onClick={() => setShowDeleteConfirm(true)}
                   title="Delete document"
                   style={{
-                    padding: "6px 10px",
+                    padding: "0 10px",
+                    height: "36px",
                     fontSize: "14px",
                     color: mode === "dark" ? "#f85149" : "#cf222e",
                     backgroundColor: "transparent",
