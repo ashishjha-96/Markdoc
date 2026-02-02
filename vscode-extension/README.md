@@ -73,10 +73,25 @@ This creates a `.vsix` file that can be installed in VSCode.
 
 ### Install from VSIX
 
+**Option 1: Using the GUI**
+
 1. Open VSCode
 2. Go to Extensions (`Ctrl+Shift+X`)
 3. Click the "..." menu → "Install from VSIX..."
 4. Select the `.vsix` file
+
+**Option 2: Using CLI**
+
+```bash
+# VSCode
+code --install-extension markdoc-export-0.1.0.vsix
+
+# Cursor
+cursor --install-extension markdoc-export-0.1.0.vsix
+
+# VSCodium
+codium --install-extension markdoc-export-0.1.0.vsix
+```
 
 ## How It Works
 
