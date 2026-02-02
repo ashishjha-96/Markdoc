@@ -105,6 +105,36 @@ env_backend =
     _ -> Keyword.get(base_storage_config, :backend, :none)
   end
 
+# Encryption key: Base64-encoded 32-byte key
+# Generate with: openssl rand -base64 32
+env_encryption_key =
+  case System.get_env("MARKDOC_ENCRYPTION_KEY") do
+    nil ->
+      Keyword.get(base_storage_config, :encryption_key)
+
+    base64_key ->
+      case Markdoc.Storage.TransformAdapter.decode_key(base64_key) do
+        {:ok, key} ->
+          key
+
+        {:error, reason} ->
+          raise """
+          Invalid MARKDOC_ENCRYPTION_KEY: #{inspect(reason)}
+          The key must be a Base64-encoded 32-byte (256-bit) value.
+          Generate one with: openssl rand -base64 32
+          """
+      end
+  end
+
+# Compression: enabled by default
+env_compression_enabled =
+  case System.get_env("MARKDOC_COMPRESSION_ENABLED") do
+    "false" -> false
+    "true" -> true
+    nil -> Keyword.get(base_storage_config, :compression_enabled, true)
+    _ -> Keyword.get(base_storage_config, :compression_enabled, true)
+  end
+
 config :markdoc, :storage,
   backend: env_backend,
   disk_path: System.get_env("MARKDOC_STORAGE_PATH") || Keyword.get(base_storage_config, :disk_path),
@@ -117,7 +147,9 @@ config :markdoc, :storage,
   retention_hours:
     env_int.("MARKDOC_RETENTION_HOURS", Keyword.get(base_storage_config, :retention_hours, 24)),
   cleanup_interval_ms:
-    env_int.("MARKDOC_CLEANUP_INTERVAL_MS", Keyword.get(base_storage_config, :cleanup_interval_ms, 900_000))
+    env_int.("MARKDOC_CLEANUP_INTERVAL_MS", Keyword.get(base_storage_config, :cleanup_interval_ms, 900_000)),
+  encryption_key: env_encryption_key,
+  compression_enabled: env_compression_enabled
 
 # ExAws (S3) runtime configuration for AWS or S3-compatible endpoints
 exaws_region = System.get_env("MARKDOC_S3_REGION") || System.get_env("AWS_REGION") || System.get_env("AWS_DEFAULT_REGION")

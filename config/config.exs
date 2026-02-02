@@ -58,7 +58,12 @@ config :markdoc, :storage,
   idle_flush_ms: 300_000,
   retention_hours: 24,
   cleanup_interval_ms: 900_000,
-  s3_prefix: "documents/"
+  s3_prefix: "documents/",
+  # Encryption: Base64-encoded 32-byte key (nil to disable)
+  # Generate with: openssl rand -base64 32
+  encryption_key: nil,
+  # Compression: Enable zlib compression (works with or without encryption)
+  compression_enabled: true
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
