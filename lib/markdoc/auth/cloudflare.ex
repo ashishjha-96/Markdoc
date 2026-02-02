@@ -62,41 +62,10 @@ defmodule Markdoc.Auth.Cloudflare do
     end
   end
 
-  @doc """
-  Checks if a host matches the private domain.
-  """
-  def is_private_domain?(host) when is_binary(host) do
-    private_domain = get_private_domain()
-    normalize_host(host) == normalize_host(private_domain)
-  end
-
-  def is_private_domain?(_), do: false
-
-  @doc """
-  Gets the configured private domain.
-  """
-  def get_private_domain do
-    auth_config() |> Keyword.get(:private_domain, "private.markdoc.live")
-  end
-
-  @doc """
-  Gets the configured public domain.
-  """
-  def get_public_domain do
-    auth_config() |> Keyword.get(:public_domain, "markdoc.live")
-  end
-
   ## Private Functions
 
   defp auth_config do
     Application.get_env(:markdoc, :auth, [])
-  end
-
-  defp normalize_host(host) do
-    host
-    |> String.downcase()
-    |> String.split(":")
-    |> List.first()
   end
 
   defp extract_cf_token(cookie_string) do

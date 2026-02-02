@@ -5,7 +5,7 @@ defmodule MarkdocWeb.UserSocket do
   Defines the channel routes and connection logic for the application.
   All document collaboration happens through the "doc:*" channel.
 
-  Handles Cloudflare Zero Trust authentication for private domain connections.
+  Handles Cloudflare Zero Trust authentication when CF_Authorization cookie is present.
   """
 
   use Phoenix.Socket
@@ -18,46 +18,45 @@ defmodule MarkdocWeb.UserSocket do
 
   @impl true
   def connect(_params, socket, connect_info) do
-    host = get_host_from_headers(connect_info)
+    # Check if CF_Authorization cookie is present - if so, authenticate
+    case try_cloudflare_auth(connect_info) do
+      {:ok, user} ->
+        # Authenticated via Cloudflare Zero Trust
+        Logger.info("Authenticated user connected",
+          email: user.email,
+          domain: :private
+        )
 
-    if Cloudflare.is_private_domain?(host) do
-      # Private domain requires Cloudflare authentication
-      case authenticate_cloudflare(connect_info) do
-        {:ok, user} ->
-          Logger.info("Authenticated user connected to private domain",
+        socket =
+          socket
+          |> assign(:auth_user, %{
             email: user.email,
+            sub: user.sub,
+            authenticated: true,
             domain: :private
-          )
+          })
 
-          socket =
-            socket
-            |> assign(:auth_user, %{
-              email: user.email,
-              sub: user.sub,
-              authenticated: true,
-              domain: :private
-            })
+        {:ok, socket}
 
-          {:ok, socket}
+      :not_present ->
+        # No CF token - public access
+        socket =
+          socket
+          |> assign(:auth_user, %{
+            email: nil,
+            sub: nil,
+            authenticated: false,
+            domain: :public
+          })
 
-        {:error, reason} ->
-          Logger.warning("Failed to authenticate user on private domain",
-            reason: inspect(reason)
-          )
-          :error
-      end
-    else
-      # Public domain - no authentication required
-      socket =
-        socket
-        |> assign(:auth_user, %{
-          email: nil,
-          sub: nil,
-          authenticated: false,
-          domain: :public
-        })
+        {:ok, socket}
 
-      {:ok, socket}
+      {:error, reason} ->
+        # CF token present but invalid - reject connection
+        Logger.warning("Failed to authenticate Cloudflare token",
+          reason: inspect(reason)
+        )
+        :error
     end
   end
 
@@ -71,18 +70,7 @@ defmodule MarkdocWeb.UserSocket do
 
   ## Private Functions
 
-  defp get_host_from_headers(%{x_headers: headers}) when is_list(headers) do
-    headers
-    |> Enum.find_value(fn
-      {"host", host} -> host
-      {"x-forwarded-host", host} -> host
-      _ -> nil
-    end)
-  end
-
-  defp get_host_from_headers(_), do: nil
-
-  defp authenticate_cloudflare(%{x_headers: headers}) when is_list(headers) do
+  defp try_cloudflare_auth(%{x_headers: headers}) when is_list(headers) do
     config = Application.get_env(:markdoc, :auth, [])
 
     if Keyword.get(config, :dev_mode, false) do
@@ -90,22 +78,27 @@ defmodule MarkdocWeb.UserSocket do
       dev_email = Keyword.get(config, :dev_email, "dev@localhost")
       {:ok, %{email: dev_email, sub: "dev-user-#{:erlang.phash2(dev_email)}"}}
     else
-      # Production mode - require CF token
-      with {:ok, token} <- Cloudflare.extract_token_from_headers(headers),
-           {:ok, user} <- Cloudflare.verify_token(token) do
-        {:ok, user}
+      # Check if CF_Authorization cookie exists
+      case Cloudflare.extract_token_from_headers(headers) do
+        {:ok, token} ->
+          # Token present - verify it
+          Cloudflare.verify_token(token)
+
+        {:error, :no_cf_token} ->
+          # No token - public access
+          :not_present
       end
     end
   end
 
-  defp authenticate_cloudflare(_) do
+  defp try_cloudflare_auth(_) do
     config = Application.get_env(:markdoc, :auth, [])
 
     if Keyword.get(config, :dev_mode, false) do
       dev_email = Keyword.get(config, :dev_email, "dev@localhost")
       {:ok, %{email: dev_email, sub: "dev-user-#{:erlang.phash2(dev_email)}"}}
     else
-      {:error, :no_headers}
+      :not_present
     end
   end
 end
