@@ -289,6 +289,42 @@ defmodule MarkdocWeb.DocChannel do
   end
 
   @impl true
+  def handle_info({:sharing_changed, metadata}, socket) do
+    auth_user = socket.assigns[:auth_user] || %{authenticated: false, domain: :public, email: nil}
+
+    Logger.debug("Sharing settings changed, re-evaluating access",
+      event: :sharing_changed,
+      user_email: auth_user[:email]
+    )
+
+    # Re-evaluate access with new metadata
+    case authorize(auth_user, metadata) do
+      :ok ->
+        # User still has access, notify about sharing mode change
+        push(socket, "sharing_updated", %{
+          sharing_mode: metadata.sharing_mode
+        })
+        {:noreply, socket}
+
+      {:error, _reason} ->
+        # User lost access, kick them out
+        Logger.info("User access revoked due to sharing change",
+          event: :access_revoked,
+          user_email: auth_user[:email]
+        )
+        push(socket, "access_revoked", %{reason: "sharing_settings_changed"})
+        # Close the socket after a brief delay to ensure message is delivered
+        Process.send_after(self(), :close_socket, 100)
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info(:close_socket, socket) do
+    {:stop, :normal, socket}
+  end
+
+  @impl true
   def terminate(reason, socket) do
     doc_id = socket.assigns[:doc_id]
 

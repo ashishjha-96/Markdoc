@@ -172,6 +172,7 @@ export function Editor({ docId }: EditorProps) {
   const [documentInfo, setDocumentInfo] = useState<DocumentInfo | null>(null);
   const [showSharingModal, setShowSharingModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const { mode } = useTheme();
 
   // Update syntax highlighting theme before editor creation
@@ -315,6 +316,18 @@ export function Editor({ docId }: EditorProps) {
     // Listen for document purge events (from other users)
     phoenixProvider.onDocumentPurged(() => {
       window.location.pathname = "/";
+    });
+
+    // Listen for channel errors (e.g., unauthorized access)
+    phoenixProvider.onError((error) => {
+      if (error.reason === "unauthorized") {
+        setAccessDenied(true);
+      }
+    });
+
+    // Listen for access revocation (when sharing settings change)
+    phoenixProvider.onAccessRevoked(() => {
+      setAccessDenied(true);
     });
 
     return () => {
@@ -510,11 +523,72 @@ export function Editor({ docId }: EditorProps) {
 
   return (
     <>
+      {/* Access Denied Page */}
+      {accessDenied && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            backgroundColor: "var(--page-bg)",
+            color: "var(--page-text)",
+            padding: "24px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "64px",
+              marginBottom: "24px",
+            }}
+          >
+            🔒
+          </div>
+          <h1
+            style={{
+              fontSize: "32px",
+              fontWeight: 600,
+              marginBottom: "16px",
+            }}
+          >
+            Access Denied
+          </h1>
+          <p
+            style={{
+              fontSize: "16px",
+              color: "var(--page-text-muted)",
+              marginBottom: "32px",
+              maxWidth: "400px",
+            }}
+          >
+            This document is private. You don't have permission to view it.
+          </p>
+          <button
+            onClick={() => window.location.pathname = "/"}
+            style={{
+              padding: "12px 24px",
+              fontSize: "16px",
+              fontWeight: 500,
+              color: "white",
+              backgroundColor: "#646cff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          >
+            Go to Home
+          </button>
+        </div>
+      )}
+
       {/* Show name prompt if needed */}
-      {showNamePrompt && (
+      {!accessDenied && showNamePrompt && (
         <NamePrompt onSubmit={handleNameSubmit} docId={docId} />
       )}
 
+      {!accessDenied && (
       <div
         style={{
           width: "100%",
@@ -863,6 +937,7 @@ export function Editor({ docId }: EditorProps) {
           </div>
         )}
       </div>
+      )}
     </>
   );
 }

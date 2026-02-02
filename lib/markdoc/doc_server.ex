@@ -414,6 +414,14 @@ defmodule Markdoc.DocServer do
             dirty?: true
         }
 
+        # Notify all connected channels to re-evaluate access
+        metadata = %{
+          owner_email: state.owner_email,
+          sharing_mode: sharing_mode,
+          allowed_emails: allowed_emails
+        }
+        notify_sharing_changed(state.users, metadata)
+
         {:reply, :ok, new_state}
     end
   end
@@ -610,6 +618,13 @@ defmodule Markdoc.DocServer do
   end
 
   defp valid_email?(_), do: false
+
+  defp notify_sharing_changed(users, metadata) do
+    # Send sharing_changed message to all connected channels
+    Enum.each(users, fn pid ->
+      send(pid, {:sharing_changed, metadata})
+    end)
+  end
 
   defp do_purge(state) do
     Logger.info("Purging document",

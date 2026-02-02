@@ -49,6 +49,8 @@ export class PhoenixProvider {
     null;
   private documentInfoCallbacks: ((info: DocumentInfo) => void)[] = [];
   private purgeCallbacks: (() => void)[] = [];
+  private errorCallbacks: ((error: { reason: string }) => void)[] = [];
+  private accessRevokedCallbacks: ((reason: string) => void)[] = [];
 
   constructor(
     docId: string,
@@ -61,13 +63,23 @@ export class PhoenixProvider {
 
     this.doc = doc;
 
+    // Extract CF_Authorization cookie if present
+    const cfToken = this.getCookie("CF_Authorization");
+
     console.log(
-      `📡 Connecting to Phoenix at ${wsUrl} for document "${docId}" as "${userInfo.name}"`
+      `📡 Connecting to Phoenix at ${wsUrl} for document "${docId}" as "${userInfo.name}"`,
+      cfToken ? "(authenticated)" : "(public)"
     );
 
     // 1. Connect to Phoenix WebSocket with stable reconnection settings
+    // Only include cf_token param if we have a valid token
+    const socketParams: Record<string, string> = {};
+    if (cfToken) {
+      socketParams.cf_token = cfToken;
+    }
+
     this.socket = new Socket(wsUrl, {
-      params: {},
+      params: socketParams,
       heartbeatIntervalMs: 30000, // Send heartbeat every 30 seconds
       reconnectAfterMs: (tries: number) => {
         // Exponential backoff: 1s, 2s, 5s, 10s, then 10s
@@ -114,6 +126,8 @@ export class PhoenixProvider {
       )
       .receive("error", (resp: any) => {
         console.error("❌ Failed to join document channel:", resp);
+        // Notify error callbacks
+        this.errorCallbacks.forEach(cb => cb(resp));
       })
       .receive("timeout", () => {
         console.error("⏱️ Channel join timeout");
@@ -163,6 +177,12 @@ export class PhoenixProvider {
       this.purgeCallbacks.forEach(cb => cb());
     });
 
+    // Listen for access revocation (when sharing settings change)
+    this.channel.on("access_revoked", (payload: { reason: string }) => {
+      console.log("🚫 Access revoked:", payload.reason);
+      this.accessRevokedCallbacks.forEach(cb => cb(payload.reason));
+    });
+
     // Listen for local document changes
     this.updateHandler = (update: Uint8Array, origin: any) => {
       // Don't send updates that came from the server (they already have it)
@@ -177,6 +197,11 @@ export class PhoenixProvider {
     };
 
     this.doc.on("update", this.updateHandler);
+  }
+
+  private getCookie(name: string): string | null {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? match[2] : null;
   }
 
   private handleInitialSync(resp: { history: number[][]; is_owner?: boolean; sharing_mode?: string | null; is_private_domain?: boolean }) {
@@ -265,6 +290,20 @@ export class PhoenixProvider {
    */
   public onDocumentPurged(callback: () => void) {
     this.purgeCallbacks.push(callback);
+  }
+
+  /**
+   * Register a callback for channel errors (e.g., unauthorized access)
+   */
+  public onError(callback: (error: { reason: string }) => void) {
+    this.errorCallbacks.push(callback);
+  }
+
+  /**
+   * Register a callback for when access is revoked (sharing settings changed)
+   */
+  public onAccessRevoked(callback: (reason: string) => void) {
+    this.accessRevokedCallbacks.push(callback);
   }
 
   /**
