@@ -33,6 +33,7 @@ import { useCursors } from "../hooks/useCursors";
 import { usePresence } from "../hooks/usePresence";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useCodeBlockAutoDetect } from "../hooks/useCodeBlockAutoDetect";
+import { useMermaidAutoConvert } from "../hooks/useMermaidAutoConvert";
 import { useSharingSettings } from "../hooks/useSharingSettings";
 import { generateDocId } from "../lib/generateDocId";
 import { requestImport, onImportMarkdown, fetchPendingImport } from "../lib/importBridge";
@@ -285,6 +286,9 @@ export function Editor({ docId }: EditorProps) {
 
   // Enable custom keyboard shortcuts
   useKeyboardShortcuts(editor);
+
+  // Auto-convert mermaid code blocks to Mermaid diagram blocks (runs before code auto-detect)
+  useMermaidAutoConvert(editor, doc);
 
   // Enable auto-detection of code block languages
   useCodeBlockAutoDetect(editor);

@@ -98,6 +98,18 @@ body {
   line-height: 1.25;
 }
 
+/* Section spacing - add breathing room before heading blocks */
+.bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type="heading"]) {
+  margin-top: 28px !important;
+  padding-top: 4px;
+}
+
+/* First heading shouldn't have extra top spacing */
+.bn-block-outer:first-child:has(> .bn-block > .bn-block-content[data-content-type="heading"]) {
+  margin-top: 0 !important;
+  padding-top: 0;
+}
+
 .bn-editor h1 {
   font-size: 2em;
   margin-top: 0;
