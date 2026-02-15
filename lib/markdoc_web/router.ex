@@ -14,13 +14,18 @@ defmodule MarkdocWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :api_cors do
+    plug :accepts, ["json"]
+    plug MarkdocWeb.Plugs.CORS
+  end
+
   pipeline :cloudflare_auth do
     plug MarkdocWeb.Plugs.CloudflareAuth
   end
 
-  # API routes for external integrations (VSCode extension, etc.)
+  # API routes for external integrations (VSCode extension, web apps, etc.)
   scope "/api", MarkdocWeb do
-    pipe_through :api
+    pipe_through :api_cors
 
     post "/import", ImportController, :create
     get "/import/:doc_id", ImportController, :show
